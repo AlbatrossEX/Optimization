@@ -1,8 +1,8 @@
 import numpy as np
-from models.build_vander import build_vander
-from models.maximize_lagrange_polynomial import maximize_lagrange_polynomial
-from models.shift_and_scale import shift_and_scale
-from models.undo_shift_and_scale import undo_shift_and_scale
+from .models.build_vander import build_vander
+from .models.maximize_lagrange_polynomial import maximize_lagrange_polynomial
+from .models.shift_and_scale import shift_and_scale
+from .models.undo_shift_and_scale import undo_shift_and_scale
 
 def algorithm_6_4(Y, Delta, f):
     x_0 = Y[0, :].reshape(-1, 1)
