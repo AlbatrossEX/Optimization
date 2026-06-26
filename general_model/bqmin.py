@@ -1,7 +1,14 @@
 import numpy as np
+from numpy.typing import NDArray
+from typing import List
+from typing import Tuple
 
-
-def bqmin(A, B, Low, Upp):
+def bqmin(
+    A: NDArray[np.floating],
+    B: NDArray[np.floating],
+    Low: NDArray[np.floating],
+    Upp: NDArray[np.floating],
+) -> List[NDArray[np.floating] | float]:
     """
     bqmin(A,B,Low,Upp) -> [X,f]
       Minimizes the quadratic 0.5 * X.T @ A @ X + B subject to Low<=X<=Upp using the
@@ -25,27 +32,26 @@ def bqmin(A, B, Low, Upp):
      t       [dbl] Step length along projected gradient
     """
     # Internal Parameters
-    n = np.shape(A)[1]  # [int] Dimension (number of continuous variables)
-    maxit = 5000  # [int] maximum number of iterations
-    pgtol = 1e-13  # [dbl] tolerance on final projected gradient
-    # Initial point (assumed feasible by Low <= 0 <= Upp)
-    X = np.zeros(n)
-    f = X.T @ (0.5 * A @ X + B)
-    G = A @ X + B
-    Projg = X - np.maximum(np.minimum(X - G, Upp), Low)  # Projected gradient
-    it = 0  # iteration counter
+    n: int = np.shape(A)[1]
+    maxit: int = 5000
+    pgtol: float = 1e-13
+    X: NDArray[np.floating] = np.zeros(n)
+    f: float = float(X.T @ (0.5 * A @ X + B))
+    G: NDArray[np.floating] = A @ X + B
+    Projg: NDArray[np.floating] = X - np.maximum(np.minimum(X - G, Upp), Low)
+    it: int = 0
     while it < maxit and np.linalg.norm(Projg, 2) > pgtol:
         it += 1
-        # Simple line search along the projected gradient
-        t = 1  # By default take the full step
-        pap = Projg.T @ (A @ Projg)
+        t: float = 1.0
+        pap: float = float(Projg.T @ (A @ Projg))
         if pap > 0:
             t = np.minimum(1, (Projg.T @ G) / pap)
-        # Compute the next point and update everything
         X = X - t * Projg
-        f = X.T @ (0.5 * A @ X + B)
+        f = float(X.T @ (0.5 * A @ X + B))
         G = A @ X + B
         Projg = X - np.maximum(np.minimum(X - G, Upp), Low)
-    # f has type array([[dbl]])
-    # f = f[0][0]
+
     return [X, f]
+
+def convertion () -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    sss
