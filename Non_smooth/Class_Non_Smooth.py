@@ -13,4 +13,11 @@ class NonSmoothFunction(TR_function):
         super().__init__(f)
 
     def GH(self, x: Array1D) -> Tuple[Array1D, Array1D]:
-        raise NotImplementedError
+        n:int = x.shape[0]
+        g: Array1D = np.zeros(n, dtype=float)
+        h: Array1D = np.zeros((n, n), dtype=float)
+
+        for i in range(n):
+            g[i] =random.choice((-1, 1))
+
+        return g, h
