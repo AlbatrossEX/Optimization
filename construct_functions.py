@@ -1,10 +1,22 @@
 import numpy as np
+import importlib.util
+from pathlib import Path
 from numpy.typing import NDArray
 from typing import Tuple
 
 from function.calfun import calfun
 from Smooth.Class_Smooth import SmoothFunction
-from Non-smooth.Class_Non_Smooth import NonSmoothFunction
+
+_NONSMOOTH_PATH = Path(__file__).parent / "Non-smooth" / "Class_Non_Smooth.py"
+_NONSMOOTH_SPEC = importlib.util.spec_from_file_location(
+    "Class_Non_Smooth",
+    _NONSMOOTH_PATH,
+)
+if _NONSMOOTH_SPEC is None or _NONSMOOTH_SPEC.loader is None:
+    raise ImportError(f"Cannot load NonSmoothFunction from {_NONSMOOTH_PATH}")
+_NONSMOOTH_MODULE = importlib.util.module_from_spec(_NONSMOOTH_SPEC)
+_NONSMOOTH_SPEC.loader.exec_module(_NONSMOOTH_MODULE)
+NonSmoothFunction = _NONSMOOTH_MODULE.NonSmoothFunction
 
 
 Array1D = NDArray[np.floating]
