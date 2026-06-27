@@ -1,9 +1,16 @@
 import numpy as np
+import os
+import sys
 from numpy.typing import NDArray
 from typing import Callable, Tuple
 
-from bqmin import bqmin
-from construct_functions import Function_object
+if __package__ is None or __package__ == "":
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+try:
+    from bqmin import bqmin
+except ModuleNotFoundError:
+    from general_model.bqmin import bqmin
 
 Array1D = NDArray[np.floating]
 
@@ -88,6 +95,8 @@ def main(
     x_0: Array1D,
     iteration: int,
 ) -> Array1D:
+    from construct_functions import Function_object
+
     miu, theta, shrink, extend, radius, p = CONSTANTS
     subject = Function_object
     result = subject.trust_region_optimization(
