@@ -2,8 +2,8 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Callable, Tuple
 
-from .bqmin import bqmin
-
+from bqmin import bqmin
+from construct_functions import Function_object
 
 Array1D = NDArray[np.floating]
 
@@ -15,7 +15,6 @@ CONSTANTS: Tuple[float, float, float, float, float, float] = (
     1.0,   # radius
     1.0,   # p
 )
-EPSILON: float = 1e-6
 
 
 def demo_f(x: Array1D) -> np.floating:
@@ -55,7 +54,6 @@ class TR_function:
         extend: float,
         radius: float,
         p: float,
-        epsilon: float,
         max_iter: int = 1000,
     ) -> Array1D:
         x = np.array(x_0, dtype=float, copy=True)
@@ -63,13 +61,9 @@ class TR_function:
 
         for _ in range(max_iter):
             g, h = self.GH(x)
-            grad_norm = float(np.linalg.norm(g, 2))
-            if grad_norm <= epsilon or delta < epsilon:
-                return x
-
             lower = -delta * np.ones_like(x)
             upper = delta * np.ones_like(x)
-            step, _model_value = bqmin(h, g, lower, upper)
+            step, _ = bqmin(h, g, lower, upper)
             step = np.asarray(step, dtype=float).reshape(x.shape)
 
             predicted_reduction = float(-(g @ step + 0.5 * step @ h @ step))
@@ -95,8 +89,7 @@ def main(
     iteration: int,
 ) -> Array1D:
     miu, theta, shrink, extend, radius, p = CONSTANTS
-    subject = TR_function(demo_f)
-    subject.GH = demo_GH  # type: ignore[method-assign]
+    subject = Function_object
     result = subject.trust_region_optimization(
         x_0=x_0,
         miu=miu,
@@ -105,7 +98,6 @@ def main(
         extend=extend,
         radius=radius,
         p=p,
-        epsilon=EPSILON,
         max_iter=iteration,
     )
     print(result)

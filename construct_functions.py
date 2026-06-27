@@ -52,16 +52,8 @@ def build_nonsmooth_problem(
     return subject
 
 
-def main() -> None:
-    x_smooth: Array1D = np.asarray([0.1, 0.2, 0.3], dtype=float)
-    x_nonsmooth: Array1D = np.asarray([0.1, 0.2, 0.3], dtype=float)
-
-    smooth_obj = build_smooth_problem(x_smooth, m=3, nprob=4)
-    nonsmooth_obj = build_nonsmooth_problem(x_nonsmooth, m=15, nprob=8)
-
-    print("smooth:", smooth_obj.output(x_smooth))
-    print("nonsmooth:", nonsmooth_obj.output(x_nonsmooth))
-
-
-if __name__ == "__main__":
-    main()
+Function_object = build_nonsmooth_problem(
+    np.asarray([0.1, 0.2, 0.3], dtype=float),
+    m=15,
+    nprob=8,
+)
