@@ -52,6 +52,3 @@ def bqmin(
         Projg = X - np.maximum(np.minimum(X - G, Upp), Low)
 
     return [X, f]
-
-def convertion () -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
-    sss

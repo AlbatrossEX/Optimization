@@ -1,27 +1,9 @@
 import numpy as np
-import os
-import sys
 from numpy.typing import NDArray
 from typing import Callable, Tuple
-
-if __package__ is None or __package__ == "":
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-try:
-    from bqmin import bqmin
-except ModuleNotFoundError:
-    from general_model.bqmin import bqmin
+from .bqmin import bqmin
 
 Array1D = NDArray[np.floating]
-
-CONSTANTS: Tuple[float, float, float, float, float, float] = (
-    0.1,   # miu
-    1.0,   # theta
-    0.5,   # shrink
-    2.0,   # extend
-    1.0,   # radius
-    1.0,   # p
-)
 
 
 def demo_f(x: Array1D) -> np.floating:
@@ -35,7 +17,7 @@ def demo_GH(x: Array1D) -> Tuple[Array1D, Array1D]:
 
 
 class TR_function:
-    def __init__(self, f: Callable[[Array1D], np.floating]):
+    def __init__(self, f):
         self.f = f
 
     def output(self, input: Array1D) -> np.floating:
@@ -90,29 +72,3 @@ class TR_function:
 
         return x
 
-
-def main(
-    x_0: Array1D,
-    iteration: int,
-) -> Array1D:
-    from construct_functions import Function_object
-
-    miu, theta, shrink, extend, radius, p = CONSTANTS
-    subject = Function_object
-    result = subject.trust_region_optimization(
-        x_0=x_0,
-        miu=miu,
-        theta=theta,
-        shrink=shrink,
-        extend=extend,
-        radius=radius,
-        p=p,
-        max_iter=iteration,
-    )
-    print(result)
-    return result
-
-
-if __name__ == "__main__":
-    x0: Array1D = np.array([1.0, 1.0], dtype=float)
-    main(x0, 1000)
