@@ -17,7 +17,7 @@ def demo_GH(x: Array1D) -> Tuple[Array1D, Array1D]:
 
 
 class TR_function:
-    def __init__(self, f):
+    def __init__(self, f: Callable[[Array1D], np.floating]):
         self.f = f
 
     def output(self, input: Array1D) -> np.floating:

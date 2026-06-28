@@ -6,7 +6,6 @@ from typing import Tuple
 
 from function.calfun import calfun
 from Smooth.Class_Smooth import SmoothFunction
-
 from Non_smooth.Class_Non_Smooth import NonSmoothFunction
 
 

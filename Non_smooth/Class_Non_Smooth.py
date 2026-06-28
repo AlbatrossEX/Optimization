@@ -18,6 +18,6 @@ class NonSmoothFunction(TR_function):
         h: Array1D = np.zeros((n, n), dtype=float)
 
         for i in range(n):
-            g[i] =random.choice((-1, 1))
+            g[i] = np.random.choice((-1, 1))
 
         return g, h
