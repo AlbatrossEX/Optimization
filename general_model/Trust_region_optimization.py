@@ -61,6 +61,9 @@ class TR_function:
                 continue
 
             actual_reduction = float(self.f(x) - self.f(x + step))
+            if not np.isfinite(actual_reduction):
+                delta *= shrink
+                continue
             roll = actual_reduction / (theta * (np.linalg.norm(step, 2) ** (1.0 + p)))
 
             if roll >= miu:
