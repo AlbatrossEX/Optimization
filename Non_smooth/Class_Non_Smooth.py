@@ -12,7 +12,7 @@ class NonSmoothFunction(TR_function):
     def __init__(self, f):
         super().__init__(f)
 
-    def GH(self, x: Array1D) -> Tuple[Array1D, Array1D]:
+    def GH(self, x: Array1D, radius: float) -> Tuple[Array1D, Array1D]:
         n:int = x.shape[0]
         g: Array1D = np.zeros(n, dtype=float)
         h: Array1D = np.zeros((n, n), dtype=float)

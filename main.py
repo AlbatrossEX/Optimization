@@ -6,7 +6,7 @@ from general_model.Trust_region_optimization import TR_function
 Array1D = NDArray[np.floating]
 
 CONSTANTS: Tuple[float, float, float, float, float, float] = (
-    0.1,   # miu
+    0.01,   # miu
     1.0,   # theta
     0.8,   # shrink
     1.2,   # extend

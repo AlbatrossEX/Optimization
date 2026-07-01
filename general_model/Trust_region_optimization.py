@@ -49,7 +49,7 @@ class TR_function:
         delta = float(radius)
 
         for _ in range(max_iter):
-            g, h = self.GH(x)
+            g, h = self.GH(x,delta)
             lower = -delta * np.ones_like(x)
             upper = delta * np.ones_like(x)
             step, _ = bqmin(h, g, lower, upper)

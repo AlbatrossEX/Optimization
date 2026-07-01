@@ -45,3 +45,5 @@ Non_Smooth_object = build_nonsmooth_problem(
     m=15,
     nprob=8,
 )   
+
+Function_object = Smooth_object  # You can change this to Non_Smooth_object if needed
