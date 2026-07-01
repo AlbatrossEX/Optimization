@@ -19,8 +19,13 @@ def demo_GH(x: Array1D) -> Tuple[Array1D, Array1D]:
 class TR_function:
     def __init__(self, f: Callable[[Array1D], np.floating]):
         self.f = f
+        self.count = 0
 
     def output(self, input: Array1D) -> np.floating:
+        self.count += 1
+        with open("Log/Logs/New.txt", "a") as f:
+            f.write(f"{self.count},{input},{self.f(input)},\n")
+        
         return self.f(input)
 
     def GH(self, x: Array1D) -> Tuple[Array1D, Array1D]:
