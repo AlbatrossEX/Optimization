@@ -37,7 +37,7 @@ def main(
 
 if __name__ == "__main__":
     x0: Array1D = np.array([7.0, 1.0, 1.0], dtype=float)
-    main(x0, 100000)
+    main(x0, 1000)
 
 
 

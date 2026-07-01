@@ -14,9 +14,9 @@ class SmoothFunction(TR_function):
         super().__init__(f)
 
     def GH(self, x: Array1D, radius: float) -> Tuple[Array1D, Array1D]:
-        f_out: NDArray[np.floating] = self.f(x)
-        poised , _ = algorithm_6_4(x=x, radius=radius, f=f_out)
-        n = poised[:, 1].shape
+        f_out: NDArray[np.floating] = np.array([[self.f(x)]])
+        poised , _ = algorithm_6_4(Y=x.reshape(1, -1), Delta=radius, f=f_out)
+        n = poised.shape[0]
         f_poised: NDArray[np.floating] = np.zeros((n, 1))
         for i in range(n):
             f_poised[i] = self.f(poised[i, :])
