@@ -34,8 +34,14 @@ def build_nonsmooth_problem(
     return subject
 
 
-Function_object = build_nonsmooth_problem(
+Smooth_object = build_smooth_problem(
     np.asarray([0.1, 0.2, 0.3], dtype=float),
     m=15,
     nprob=8,
 )
+
+Non_Smooth_object = build_nonsmooth_problem(
+    np.asarray([0.1, 0.2, 0.3], dtype=float),
+    m=15,
+    nprob=8,
+)   
