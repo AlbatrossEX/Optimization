@@ -3,7 +3,20 @@
     "allow": [
       "Bash(python -c ' *)",
       "Bash(python3 -c ' *)",
-      "Read(//mnt/c/D/SynologyDrive/CS-PROJECTS/**)"
+      "Read(//mnt/c/D/SynologyDrive/CS-PROJECTS/**)",
+      "Bash(where python *)",
+      "Bash(where python3 *)",
+      "Bash(where py *)",
+      "Bash(\"C:\\\\Users\\\\AlBat\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"import numpy, scipy; print\\(numpy.__version__, scipy.__version__\\)\")",
+      "Bash(\"C:\\\\Users\\\\AlBat\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -m pip --version)",
+      "Bash(wsl python3 *)",
+      "Bash(wsl bash *)",
+      "WebSearch",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "PowerShell(Head -5)",
+      "PowerShell(\"--- Sample log file content ---\")",
+      "Read(//c/Users/AlBat/.claude/**)"
     ]
   }
 }

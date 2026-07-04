@@ -20,8 +20,9 @@ class NonSmoothFunction(TR_function):
         for i in range(n):
             g[i] = np.random.choice((-1, 1))
 
-        for i,j in range(n):
-            h[i,j] = np.random.choice((-1, 1))
-            h[j,i] = h[i,j]
+        for i in range(n):
+            for j in range(i, n):
+                h[i, j] = np.random.choice((-1, 1))
+                h[j, i] = h[i, j]
 
         return g, h

@@ -14,12 +14,15 @@ class SmoothFunction(TR_function):
         super().__init__(f)
 
     def GH(self, x: Array1D, radius: float) -> Tuple[Array1D, Array1D]:
-        f_out: NDArray[np.floating] = np.array([[self.f(x)]])
+        f_out: NDArray[np.floating] = np.array([[self.output(x)]])
         poised , _ = algorithm_6_4(Y=x.reshape(1, -1), Delta=radius, f=f_out)
+        if self.count == 1:
+            print(poised)
         n = poised.shape[0]
         f_poised: NDArray[np.floating] = np.zeros((n, 1))
         for i in range(n):
-            f_poised[i] = self.f(poised[i, :])
-
+            f_poised[i] = self.output(poised[i, :])
+        self.f_poised = f_poised
+        self.poised = poised
         return fitfroquad(poised, f_poised)
         

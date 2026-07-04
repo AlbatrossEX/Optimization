@@ -11,6 +11,7 @@ def algorithm_6_4(
     Delta: float,
     f: NDArray[np.floating],
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+
     x_0: NDArray[np.floating] = Y[0, :].reshape(-1, 1)
     Y, scalefactor = shift_and_scale(Y)
 

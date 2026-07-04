@@ -79,4 +79,51 @@ class TR_function:
                 delta *= shrink
 
         return x
+    
+
+    def trust_region_optimization_1(
+        self,
+        x_0: Array1D,
+        miu: float,
+        theta: float,
+        shrink: float,
+        extend: float,
+        radius: float,
+        p: float,
+        max_iter: int = 1000,
+    ) -> Array1D:
+        x = np.array(x_0, dtype=float, copy=True)
+        delta = float(radius)
+
+        for _ in range(max_iter):
+            g, h = self.GH(x,delta)
+            lower = -delta * np.ones_like(x)
+            upper = delta * np.ones_like(x)
+            step, _ = bqmin(h, g, lower, upper)
+            step = np.asarray(step, dtype=float).reshape(x.shape)
+
+            afterstep:float = self.f(x + step)
+            min_interp:float = np.min(self.f_poised)
+
+            if afterstep >= min_interp:
+                afterstep = min_interp
+                flat_idx = np.argmin(self.f_poised)
+                step = self.poised[flat_idx, :] - x
+                continue
+
+            actual_reduction = float(self.f(x) - afterstep)
+            if not np.isfinite(actual_reduction):
+                delta *= shrink
+                continue
+            roll = actual_reduction / (theta * (np.linalg.norm(step, 2) ** (1.0 + p)))
+
+            if roll >= miu:
+                x = x + step
+                if roll > 0.75:
+                    delta *= extend
+            else:
+                delta *= shrink
+
+        return x
+
 
