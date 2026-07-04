@@ -3,17 +3,16 @@ from numpy.typing import NDArray
 from typing import Callable, Tuple
 from construct_functions import Function_object
 from general_model.Trust_region_optimization import TR_function
-from datetime import datetime
 from pathlib import Path
 
 Array1D = NDArray[np.floating]
 
 CONSTANTS: Tuple[float, float, float, float, float, float] = (
     0.1,   # miu
-    1.0,   # theta
-    0.8,   # shrink
-    3.0,   # extend
-    10.0,   # radius
+    0.1,   # theta
+    0.01,   # shrink
+    1.1,   # extend
+    1.0,  # radius
     1.0,   # p
 )
 
@@ -35,15 +34,11 @@ def main(
     )
     print(result)
     print(subject.output(result))
-    now = datetime.now()
-    Path("Log/Logs/New.txt").rename(f"Log/Logs/{now}.txt")
+    log_name = f"miu{miu}_theta{theta}_shrink{shrink}_extend{extend}_radius{radius}_p{p}"
+    Path("Log/Logs/New.txt").rename(f"Log/Logs/{log_name}.txt")
     return result
 
 
 if __name__ == "__main__":
     x0: Array1D = np.array([1.0, 1.0, 1.0], dtype=float)
     main(x0, 100)
-
-
-
-
