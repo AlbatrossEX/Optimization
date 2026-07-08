@@ -1,43 +1,75 @@
+import atexit
+import queue
+import threading
 import numpy as np
 from numpy.typing import NDArray
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 from .bqmin import bqmin
 
 Array1D = NDArray[np.floating]
 
 
-def demo_f(x: Array1D) -> np.floating:
-    return np.float64(x @ x)
+class _AsyncLogWriter:
+    """Writes log lines from a background thread so callers never block on disk I/O."""
 
+    def __init__(self, path: str):
+        self._path = path
+        self._queue: "queue.Queue[Optional[str]]" = queue.Queue()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        atexit.register(self.stop)
 
-def demo_GH(x: Array1D) -> Tuple[Array1D, Array1D]:
-    g: Array1D = 2.0 * x
-    h: Array1D = 2.0 * np.eye(x.shape[0])
-    return g, h
+    def _run(self) -> None:
+        # Opened per batch (not held open) so the log file can be renamed/deleted
+        # by the main thread between writes without fighting the writer for the handle.
+        # Draining the whole backlog per open matters: one open/close per line is
+        # what dominates runtime on slow filesystems (SynologyDrive, /mnt/c).
+        while True:
+            batch = [self._queue.get()]
+            while True:
+                try:
+                    batch.append(self._queue.get_nowait())
+                except queue.Empty:
+                    break
+            lines = [l for l in batch if l is not None]
+            if lines:
+                with open(self._path, "a") as f:
+                    f.writelines(lines)
+            for _ in batch:
+                self._queue.task_done()
+            if None in batch:
+                break
+
+    def write(self, line: str) -> None:
+        self._queue.put(line)
+
+    def flush(self) -> None:
+        """Block until every queued line so far has been written to disk."""
+        self._queue.join()
+
+    def stop(self) -> None:
+        self._queue.put(None)
+        self._thread.join()
 
 
 class TR_function:
     def __init__(self, f: Callable[[Array1D], np.floating]):
         self.f = f
         self.count = 0
+        self._logger = _AsyncLogWriter("Log/Logs/New.txt")
 
     def output(self, input: Array1D) -> np.floating:
         self.count += 1
-        with open("Log/Logs/New.txt", "a") as f:
-            f.write(f"{self.count},{input},{self.f(input)},\n")
-        
-        return self.f(input)
+        value = self.f(input)
+        self._logger.write(f"{self.count},{input},{value},\n")
+        return value
 
-    def GH(self, x: Array1D) -> Tuple[Array1D, Array1D]:
+    def flush_log(self) -> None:
+        """Wait for all pending async log writes to hit disk (e.g. before renaming the log file)."""
+        self._logger.flush()
+
+    def GH(self, x: Array1D, radius: float) -> Tuple[Array1D, Array1D]:
         raise NotImplementedError
-
-    def model(self, x: Array1D) -> Callable[[Array1D], np.floating]:
-        g, h = self.GH(x)
-
-        def f(step: Array1D) -> np.floating:
-            return np.float64(self.f(x) + g @ step + 0.5 * step @ h @ step)
-
-        return f
 
     def trust_region_optimization(
         self,
@@ -52,12 +84,12 @@ class TR_function:
     ) -> Array1D:
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
+        fx = float(self.f(x))
 
         for _ in range(max_iter):
-            g, h = self.GH(x,delta)
-            lower = -delta * np.ones_like(x)
-            upper = delta * np.ones_like(x)
-            step, _ = bqmin(h, g, lower, upper)
+            g, h = self.GH(x, delta)
+            bound = delta * np.ones_like(x)
+            step, _ = bqmin(h, g, -bound, bound)
             step = np.asarray(step, dtype=float).reshape(x.shape)
 
             predicted_reduction = float(-(g @ step + 0.5 * step @ h @ step))
@@ -65,7 +97,8 @@ class TR_function:
                 delta *= shrink
                 continue
 
-            actual_reduction = float(self.f(x) - self.f(x + step))
+            f_trial = float(self.f(x + step))
+            actual_reduction = fx - f_trial
             if not np.isfinite(actual_reduction):
                 delta *= shrink
                 continue
@@ -73,6 +106,7 @@ class TR_function:
 
             if roll >= miu:
                 x = x + step
+                fx = f_trial
                 if roll > 0.75:
                     delta *= extend
             else:

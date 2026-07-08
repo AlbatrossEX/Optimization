@@ -10,19 +10,40 @@ Array1D = NDArray[np.floating]
 CONSTANTS: Tuple[float, float, float, float, float, float] = (
     0.1,   # miu
     0.1,   # theta
-    0.01,   # shrink
+    0.5,   # shrink
     1.1,   # extend
-    1.0,  # radius
+    10.0,  # radius
     1.0,   # p
 )
+
+LOG_DIR = Path("Log/Logs")
+KEEP_LAST_RUNS = 5
+
+
+def cleanup_logs(log_dir: Path = LOG_DIR, keep_last: int = KEEP_LAST_RUNS) -> None:
+    """Drop crashed-run leftovers, empty logs, and all but the most recent runs."""
+    orphan = log_dir / "New.txt"
+    if orphan.exists():
+        orphan.unlink()
+
+    runs = [p for p in log_dir.glob("*.txt") if p.name != "New.txt"]
+    for run in runs:
+        if run.stat().st_size == 0:
+            run.unlink()
+    runs = [p for p in runs if p.exists()]
+
+    runs.sort(key=lambda p: p.stat().st_mtime)
+    for stale in runs[:-keep_last] if keep_last > 0 else runs:
+        stale.unlink()
+
 
 def main(
     x_0: Array1D,
     iteration: int,
 ) -> Array1D:
     miu, theta, shrink, extend, radius, p = CONSTANTS
-    subject = Function_object
-    result = subject.trust_region_optimization(
+    cleanup_logs()
+    result = Function_object.trust_region_optimization(
         x_0=x_0,
         miu=miu,
         theta=theta,
@@ -33,12 +54,14 @@ def main(
         max_iter=iteration,
     )
     print(result)
-    print(subject.output(result))
+    print(Function_object.output(result))
+    Function_object.flush_log()
     log_name = f"miu{miu}_theta{theta}_shrink{shrink}_extend{extend}_radius{radius}_p{p}"
     Path("Log/Logs/New.txt").rename(f"Log/Logs/{log_name}.txt")
+    cleanup_logs()
     return result
 
 
 if __name__ == "__main__":
     x0: Array1D = np.array([1.0, 1.0, 1.0], dtype=float)
-    main(x0, 100)
+    main(x0, 200)

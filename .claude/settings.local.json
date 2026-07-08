@@ -16,7 +16,11 @@
       "mcp__visualize__show_widget",
       "PowerShell(Head -5)",
       "PowerShell(\"--- Sample log file content ---\")",
-      "Read(//c/Users/AlBat/.claude/**)"
+      "Read(//c/Users/AlBat/.claude/**)",
+      "mcp__claude-in-chrome__navigate",
+      "mcp__claude-in-chrome__get_page_text",
+      "mcp__claude-in-chrome__read_network_requests",
+      "mcp__claude-in-chrome__list_connected_browsers"
     ]
   }
 }
