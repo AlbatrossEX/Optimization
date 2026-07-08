@@ -128,31 +128,35 @@ class TR_function:
     ) -> Array1D:
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
+        fx = float(self.f(x))
 
         for _ in range(max_iter):
-            g, h = self.GH(x,delta)
-            lower = -delta * np.ones_like(x)
-            upper = delta * np.ones_like(x)
-            step, _ = bqmin(h, g, lower, upper)
+            g, h = self.GH(x, delta)
+            bound = delta * np.ones_like(x)
+            step, _ = bqmin(h, g, -bound, bound)
             step = np.asarray(step, dtype=float).reshape(x.shape)
 
-            afterstep:float = self.f(x + step)
-            min_interp:float = np.min(self.f_poised)
+            f_trial = float(self.f(x + step))
 
-            if afterstep >= min_interp:
-                afterstep = min_interp
-                flat_idx = np.argmin(self.f_poised)
-                step = self.poised[flat_idx, :] - x
-                continue
+            # Fall back to the best interpolation point when it beats the model
+            # step; its f value was already computed inside GH, so it is free.
+            best_idx = int(np.argmin(self.f_poised))
+            f_interp = float(self.f_poised[best_idx])
+            if f_interp < f_trial:
+                f_trial = f_interp
+                step = self.poised[best_idx, :] - x
 
-            actual_reduction = float(self.f(x) - afterstep)
-            if not np.isfinite(actual_reduction):
+            actual_reduction = fx - f_trial
+            step_norm = float(np.linalg.norm(step, 2))
+            # step_norm can be 0 when the best interpolation point is x itself
+            if not np.isfinite(actual_reduction) or step_norm == 0.0:
                 delta *= shrink
                 continue
-            roll = actual_reduction / (theta * (np.linalg.norm(step, 2) ** (1.0 + p)))
+            roll = actual_reduction / (theta * step_norm ** (1.0 + p))
 
             if roll >= miu:
                 x = x + step
+                fx = f_trial
                 if roll > 0.75:
                     delta *= extend
             else:
