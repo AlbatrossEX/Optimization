@@ -1,4 +1,4 @@
-import numpy as np
+﻿import numpy as np
 from numpy.typing import NDArray
 from typing import Tuple
 
@@ -10,7 +10,10 @@ Array1D = NDArray[np.floating]
 
 
 class SmoothFunction(TR_function):
-    def GH(self, x: Array1D, radius: float) -> Tuple[Array1D, Array1D]:
+    def GH(self, x: Array1D, radius: float, gh_type: int = 0) -> Tuple[Array1D, Array1D]:
+        """gh_type 0 = quadratic interpolation fit (the only smooth model builder)."""
+        if gh_type != 0:
+            raise ValueError(f"unknown gh_type {gh_type}")
         f_out: NDArray[np.floating] = np.array([[self.output(x)]])
         poised, _ = algorithm_6_4(Y=x.reshape(1, -1), Delta=radius, f=f_out)
         n = poised.shape[0]

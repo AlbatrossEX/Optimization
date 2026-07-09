@@ -68,7 +68,13 @@ class TR_function:
         """Wait for all pending async log writes to hit disk (e.g. before renaming the log file)."""
         self._logger.flush()
 
-    def GH(self, x: Array1D, radius: float) -> Tuple[Array1D, Array1D]:
+    def redirect_log(self, path: str) -> None:
+        """Route subsequent log lines to a new file (each parallel worker needs its own)."""
+        old = self._logger
+        self._logger = _AsyncLogWriter(path)
+        old.stop()
+
+    def GH(self, x: Array1D, radius: float, gh_type: int = 0) -> Tuple[Array1D, Array1D]:
         raise NotImplementedError
 
     def trust_region_optimization(
@@ -81,13 +87,14 @@ class TR_function:
         radius: float,
         p: float,
         max_iter: int = 1000,
+        gh_type: int = 0,
     ) -> Array1D:
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
         fx = float(self.f(x))
 
         for _ in range(max_iter):
-            g, h = self.GH(x, delta)
+            g, h = self.GH(x, delta, gh_type)
             bound = delta * np.ones_like(x)
             step, _ = bqmin(h, g, -bound, bound)
             step = np.asarray(step, dtype=float).reshape(x.shape)
@@ -125,13 +132,58 @@ class TR_function:
         radius: float,
         p: float,
         max_iter: int = 1000,
+        gh_type: int = 0,
     ) -> Array1D:
+        """Steps to the best interpolation (poised) point instead of the bqmin minimizer."""
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
         fx = float(self.f(x))
 
         for _ in range(max_iter):
-            g, h = self.GH(x, delta)
+            self.GH(x, delta, gh_type)
+            best_idx = int(np.argmin(self.f_poised))
+            # .item(): f_poised rows are 1-element arrays, which numpy >= 2 no
+            # longer converts to scalars via float()
+            f_trial = self.f_poised[best_idx].item()
+            step = self.poised[best_idx, :] - x
+
+            actual_reduction = fx - f_trial
+            step_norm = float(np.linalg.norm(step, 2))
+            # step_norm can be 0 when the best interpolation point is x itself
+            if not np.isfinite(actual_reduction) or step_norm == 0.0:
+                delta *= shrink
+                continue
+            roll = actual_reduction / (theta * step_norm ** (1.0 + p))
+
+            if roll >= miu:
+                x = x + step
+                fx = f_trial
+                if roll > 0.75:
+                    delta *= extend
+            else:
+                delta *= shrink
+
+        return x
+
+    def trust_region_optimization_2(
+        self,
+        x_0: Array1D,
+        miu: float,
+        theta: float,
+        shrink: float,
+        extend: float,
+        radius: float,
+        p: float,
+        max_iter: int = 1000,
+        gh_type: int = 0,
+    ) -> Array1D:
+        """Takes whichever candidate is better: the bqmin step or the best interpolation point."""
+        x = np.array(x_0, dtype=float, copy=True)
+        delta = float(radius)
+        fx = float(self.f(x))
+
+        for _ in range(max_iter):
+            g, h = self.GH(x, delta, gh_type)
             bound = delta * np.ones_like(x)
             step, _ = bqmin(h, g, -bound, bound)
             step = np.asarray(step, dtype=float).reshape(x.shape)
@@ -141,7 +193,7 @@ class TR_function:
             # Fall back to the best interpolation point when it beats the model
             # step; its f value was already computed inside GH, so it is free.
             best_idx = int(np.argmin(self.f_poised))
-            f_interp = float(self.f_poised[best_idx])
+            f_interp = self.f_poised[best_idx].item()
             if f_interp < f_trial:
                 f_trial = f_interp
                 step = self.poised[best_idx, :] - x
@@ -163,5 +215,41 @@ class TR_function:
                 delta *= shrink
 
         return x
+
+    def trust_region_optimization_function(
+        self,
+        method: int,
+        x_0: Array1D,
+        miu: float,
+        theta: float,
+        shrink: float,
+        extend: float,
+        radius: float,
+        p: float,
+        max_iter: int = 1000,
+        gh_type: int = 0,
+    ) -> Array1D:
+        """Dispatches to a solver by method: 0 = bqmin step, 1 = best interpolation point, 2 = better of the two.
+
+        gh_type selects the model builder inside GH (0 = quadratic interpolation
+        fit; NonSmoothFunction additionally supports 1 = random +-1 model, which
+        only works with method 0 since it builds no interpolation set).
+        """
+        solvers = (
+            self.trust_region_optimization,
+            self.trust_region_optimization_1,
+            self.trust_region_optimization_2,
+        )
+        return solvers[int(method)](
+            x_0=x_0,
+            miu=miu,
+            theta=theta,
+            shrink=shrink,
+            extend=extend,
+            radius=radius,
+            p=p,
+            max_iter=max_iter,
+            gh_type=gh_type,
+        )
 
 
