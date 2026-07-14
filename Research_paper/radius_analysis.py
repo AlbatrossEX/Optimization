@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 
 from construct_functions import build_smooth_problem
-from Smooth.models.bqmin import bqmin
+from general_model.Smooth.models.bqmin import bqmin
 
 DIM = 3
 RADIUS_RANGE = (0.01, 5.0)
@@ -92,8 +92,8 @@ def run(problem, label, pole_diag=False):
 
 
 # A: linear rank-1 residuals -> exactly quadratic objective
-run(build_smooth_problem(np.zeros(3), m=15, nprob=2), "nprob=2 linear (f exactly quadratic)")
+run(build_smooth_problem(m=15, nprob=2), "nprob=2 linear (f exactly quadratic)")
 # B: Box 3D -- smooth, no poles
-run(build_smooth_problem(np.zeros(3), m=15, nprob=12), "nprob=12 Box 3D (smooth, no poles)")
+run(build_smooth_problem(m=15, nprob=12), "nprob=12 Box 3D (smooth, no poles)")
 # C: Bard with pole diagnostics
-run(build_smooth_problem(np.zeros(3), m=15, nprob=8), "nprob=8 Bard (poles)", pole_diag=True)
+run(build_smooth_problem(m=15, nprob=8), "nprob=8 Bard (poles)", pole_diag=True)

@@ -3,10 +3,14 @@ import queue
 import threading
 import numpy as np
 from numpy.typing import NDArray
+from pathlib import Path
 from typing import Callable, Optional, Tuple
 from .bqmin import bqmin
 
 Array1D = NDArray[np.floating]
+
+# anchored to the project root so logging works regardless of the caller's cwd
+_LIVE_LOG = str(Path(__file__).resolve().parents[1] / "Log" / "Logs" / "New.txt")
 
 
 class _AsyncLogWriter:
@@ -56,7 +60,7 @@ class TR_function:
     def __init__(self, f: Callable[[Array1D], np.floating]):
         self.f = f
         self.count = 0
-        self._logger = _AsyncLogWriter("Log/Logs/New.txt")
+        self._logger = _AsyncLogWriter(_LIVE_LOG)
 
     def output(self, input: Array1D) -> np.floating:
         self.count += 1
@@ -77,7 +81,7 @@ class TR_function:
     def GH(self, x: Array1D, radius: float, gh_type: int = 0) -> Tuple[Array1D, Array1D]:
         raise NotImplementedError
 
-    def trust_region_optimization(
+    def trust_region_optimization_0(
         self,
         x_0: Array1D,
         miu: float,
@@ -91,7 +95,8 @@ class TR_function:
     ) -> Array1D:
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
-        fx = float(self.f(x))
+        # output() (not self.f) so the solver's own evaluations are counted and logged
+        fx = float(self.output(x))
 
         for _ in range(max_iter):
             g, h = self.GH(x, delta, gh_type)
@@ -104,7 +109,7 @@ class TR_function:
                 delta *= shrink
                 continue
 
-            f_trial = float(self.f(x + step))
+            f_trial = float(self.output(x + step))
             actual_reduction = fx - f_trial
             if not np.isfinite(actual_reduction):
                 delta *= shrink
@@ -137,7 +142,8 @@ class TR_function:
         """Steps to the best interpolation (poised) point instead of the bqmin minimizer."""
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
-        fx = float(self.f(x))
+        # output() (not self.f) so the solver's own evaluations are counted and logged
+        fx = float(self.output(x))
 
         for _ in range(max_iter):
             self.GH(x, delta, gh_type)
@@ -180,7 +186,8 @@ class TR_function:
         """Takes whichever candidate is better: the bqmin step or the best interpolation point."""
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
-        fx = float(self.f(x))
+        # output() (not self.f) so the solver's own evaluations are counted and logged
+        fx = float(self.output(x))
 
         for _ in range(max_iter):
             g, h = self.GH(x, delta, gh_type)
@@ -188,7 +195,7 @@ class TR_function:
             step, _ = bqmin(h, g, -bound, bound)
             step = np.asarray(step, dtype=float).reshape(x.shape)
 
-            f_trial = float(self.f(x + step))
+            f_trial = float(self.output(x + step))
 
             # Fall back to the best interpolation point when it beats the model
             # step; its f value was already computed inside GH, so it is free.
@@ -236,7 +243,7 @@ class TR_function:
         only works with method 0 since it builds no interpolation set).
         """
         solvers = (
-            self.trust_region_optimization,
+            self.trust_region_optimization_0,
             self.trust_region_optimization_1,
             self.trust_region_optimization_2,
         )

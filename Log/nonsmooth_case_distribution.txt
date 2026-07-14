@@ -1,0 +1,15 @@
+case set: 400 runs (200 iterations each) = 10 starting points x 10 radii x 4 method/gh combos
+  radii: 0.01 (40 runs), 0.0215 (40 runs), 0.0464 (40 runs), 0.1 (40 runs), 0.215 (40 runs), 0.464 (40 runs), 1 (40 runs), 2.15 (40 runs), 4.64 (40 runs), 10 (40 runs)
+  methods: 0 = bqmin step (200 runs), 1 = best interpolation point (100 runs), 2 = better of the two (100 runs)
+  gh types: 0 (300 runs), 1 (100 runs)
+  starting points:
+    N000..N039  [0.82, -1.38, -2.75]  (40 runs)
+    N040..N079  [-2.9, 1.88, 2.48]  (40 runs)
+    N080..N119  [0.64, 1.38, 0.26]  (40 runs)
+    N120..N159  [2.61, 1.9, -2.98]  (40 runs)
+    N160..N199  [2.14, -2.8, 1.38]  (40 runs)
+    N200..N239  [-1.95, 2.18, 0.25]  (40 runs)
+    N240..N279  [-1.2, -0.46, -2.83]  (40 runs)
+    N280..N319  [-2.25, 1.02, 0.88]  (40 runs)
+    N320..N359  [0.69, -0.7, 2.98]  (40 runs)
+    N360..N399  [2.89, 1.11, 0.9]  (40 runs)

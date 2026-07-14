@@ -14,13 +14,13 @@ import numpy as np
 
 from construct_functions import build_smooth_problem
 from function.calfun import calfun
-from Smooth.models.bqmin import bqmin
+from general_model.Smooth.models.bqmin import bqmin
 
 rng = np.random.default_rng(0)
 
 print("--- gradient frame check (nprob=2, f exactly quadratic; then Bard) ---")
 for nprob in (2, 8):
-    prob = build_smooth_problem(np.zeros(3), m=15, nprob=nprob)
+    prob = build_smooth_problem(m=15, nprob=nprob)
     for delta in (0.01, 0.1, 1.0):
         errs_raw, errs_centered = [], []
         for _ in range(20):
@@ -33,7 +33,7 @@ for nprob in (2, 8):
               f"G+Hx: {np.median(errs_centered):9.3g}")
 
 print("\n--- Bard comparison with re-centered gradient ---")
-prob = build_smooth_problem(np.zeros(3), m=15, nprob=8)
+prob = build_smooth_problem(m=15, nprob=8)
 RADIUS_RANGE = (0.01, 5.0)
 N_TRIALS = 800
 N_BINS = 10

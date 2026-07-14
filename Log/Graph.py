@@ -97,7 +97,7 @@ for i, (method, log_file, iterations, objectives) in enumerate(curves):
         iterations,
         objectives,
         where="post",
-        label=log_file,
+        # label=log_file,
         alpha=0.85,
         transform=ax.transData + stack,
         **style,
