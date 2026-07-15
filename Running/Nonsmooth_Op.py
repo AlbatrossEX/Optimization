@@ -1,16 +1,29 @@
-"""Entry point for the non-smooth test suite: runs the non-differentiable
-calfun problem over the same 10 starts x 10 radii grid as the smooth suite,
-comparing the two GH model builders (gh_type 0 = quadratic interpolation fit,
-gh_type 1 = random +-1 model) and the three trust-region methods.
+"""Entry point for the non-smooth test suite: the non-differentiable calfun
+problem, built to compare the two GH model builders (gh_type 0 = quadratic
+interpolation fit, gh_type 1 = random +-1 model).
 
-Logs are labelled N### so they coexist with the smooth suite's T### logs in
-Log/Logs; graph them with Log/Non_smooth/Nonsmooth_graph.py."""
+Everything about the experiment is declared here — the function, constants,
+starting points, radii, gh types, trust-region methods, iteration count and case
+distribution. general_model/Optimize.py owns only how the run is executed.
+
+The distribution is declared as Blocks rather than one uniform grid, so each
+comparison can be scoped independently. Logs are labelled N### and coexist with
+the smooth suite's T### logs in Log/Logs; graph them with
+Log/Non_smooth/Nonsmooth_graph.py.
+"""
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # project root
 
-from general_model.Optimize import LOG_DIR, build_cases, describe_cases, run_suite
+from general_model.Optimize import (
+    Block,
+    Experiment,
+    build_blocks,
+    log_radii,
+    random_starts,
+    run_experiment,
+)
 
 CONSTANTS = (
     0.1,   # miu
@@ -27,22 +40,42 @@ CONSTANTS = (
 # problem via construct_functions.build_problem.
 PROBLEM = {"kind": "nonsmooth", "m": 15, "nprob": 8}
 
-# (method, gh_type) pairs run for every start x radius: all three methods with
-# the interpolation model, plus the random +-1 model — which only supports
-# method 0, since it builds no interpolation set for methods 1/2 to step to.
-COMBOS = [(0, 0), (1, 0), (2, 0), (0, 1)]
+ITERATION = 500
+STARTS = random_starts(count=10, dim=3, box=3.0, seed=0)
+RADII = log_radii(0.01, 10.0, 10)
+
+# The comparison this suite exists for: one trust-region method, both GH model
+# builders, everything else held fixed — so any difference in the logs is the
+# model builder and nothing else.
+#
+# Method 0 (bqmin step) is the only method this comparison can run at: gh_type 1
+# builds no interpolation set, and methods 1/2 step to the best interpolation
+# point, so they have nothing to step to. See Class_Non_Smooth.GH.
+GH_COMPARE = Block(methods=[0], gh_types=[0, 1], starts=STARTS, radii=RADII)
+
+# Context for the above: the other two trust-region methods against the
+# interpolation model, so the GH comparison can be read against how the methods
+# themselves differ. Its own block because it cannot include gh_type 1.
+METHOD_COMPARE = Block(methods=[1, 2], gh_types=[0], starts=STARTS, radii=RADII)
+
+# Each Block carries its own starts and radii, so a comparison can be scoped
+# independently of the others — e.g. sweep the GH comparison over a denser grid
+# with radii=log_radii(0.01, 10.0, 20), or repeat a block to average over the
+# random draw gh_type 1 makes. Blocks are concatenated; labels stay unique.
+BLOCKS = [GH_COMPARE, METHOD_COMPARE]
+
+# Label prefix for this suite's logs; the smooth suite uses "T" and the two
+# coexist in Log/Logs.
+PREFIX = "N"
 
 if __name__ == "__main__":
-    cases = build_cases(combos=COMBOS, prefix="N")
-
-    # Details and distribution of what is about to run: printed up front and
-    # saved next to the log folder so it can be inspected after the run too.
-    summary = describe_cases(cases)
-    print(summary)
-    (LOG_DIR.parent / "nonsmooth_case_distribution.txt").write_text(summary + "\n")
-
-    # Wipe only this suite's own logs (N prefix, plus any live-log leftovers);
-    # the smooth suite's T logs share the folder and must survive.
-    for stale in LOG_DIR.glob("N*.txt"):
-        stale.unlink()
-    run_suite(PROBLEM, CONSTANTS, cases)
+    run_experiment(
+        Experiment(
+            name="nonsmooth",
+            problem=PROBLEM,
+            constants=CONSTANTS,
+            cases=build_blocks(BLOCKS, PREFIX),
+            iteration=ITERATION,
+            prefix=PREFIX,
+        )
+    )

@@ -10,8 +10,8 @@ from general_model.Smooth.Quad import fitfroquad
 Array1D = NDArray[np.floating]
 
 
-class NonSmoothFunction(TR_function):
-    def GH(self, x: Array1D, radius: float, gh_type: int = 0) -> Tuple[Array1D, Array1D]:
+class NonSmoothFunction(TR_function):   
+    def GH(self, x: Array1D, radius: float, gh_type: int ) -> Tuple[Array1D, Array1D]:
         """gh_type 0 = quadratic interpolation fit (sets self.poised/self.f_poised);
         gh_type 1 = random +-1 model (no interpolation set, method 0 only)."""
         if gh_type == 0:

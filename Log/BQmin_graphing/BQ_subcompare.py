@@ -3,6 +3,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root
 
+GRAPH_DIR = Path(__file__).resolve().parent / "Graphs"  # generated figures land here
+GRAPH_DIR.mkdir(parents=True, exist_ok=True)
+
 import numpy as np
 import matplotlib
 
@@ -15,7 +18,7 @@ from general_model.Smooth.models.bqmin import bqmin
 # same problem the suite in Running/main.py uses (Bard, nprob=8)
 Function_object = build_smooth_problem(m=15, nprob=8)
 
-N_TRIALS = 2000
+N_TRIALS = 5000  # Reduced from 100000 for reasonable runtime
 DIM = 3
 RADIUS_RANGE = (0.01, 5.0)   # radii drawn log-uniformly on this interval
 N_BINS = 6                   # domains for the boxplot panels and winner counts
@@ -45,10 +48,15 @@ def main():
     f_origin = np.empty(N_TRIALS)
     f_interp = np.empty(N_TRIALS)
     f_bq = np.empty(N_TRIALS)
+    # evaluations GH spends building the interpolation model (origin + poised set),
+    # measured off the objective's own counter so it is not hard-coded
+    model_evals = np.empty(N_TRIALS)
 
     for trial in range(N_TRIALS):
         x = rng.uniform(*X_RANGE, DIM)
+        before = Function_object.count
         f_origin[trial], f_interp[trial], f_bq[trial] = compare_once(x, radii[trial])
+        model_evals[trial] = Function_object.count - before
         print(f"trial {trial + 1:4d}  radius={radii[trial]:<9.4g} "
               f"f_origin={f_origin[trial]:.6g}  "
               f"f_interp={f_interp[trial]:.6g}  f_bqmin={f_bq[trial]:.6g}")
@@ -93,19 +101,35 @@ def main():
 
     bin_labels = [f"{c:.3g}" for c in centers]
 
-    # bqmin improvement over the best interpolation point, per radius domain.
-    diff_groups = [f_interp[bin_idx == b] - f_bq[bin_idx == b]
-                   for b in range(N_BINS)]
-    ax2.axhline(0, color="k", linewidth=1, linestyle="--")
-    ax2.boxplot(diff_groups, labels=bin_labels, showfliers=False)
-    for i, group in enumerate(diff_groups, start=1):
-        jitter = np.random.default_rng(i).uniform(-0.2, 0.2, group.size)
-        ax2.scatter(np.full(group.size, i) + jitter, group,
-                    s=6, alpha=0.3, color="tab:blue")
-    ax2.set_yscale("symlog")
-    ax2.set_xlabel("trust-region radius (domain center)")
-    ax2.set_ylabel("f_interp - f_bqmin  (positive = bqmin better)")
-    ax2.set_title("Improvement of bqmin over best interpolation point")
+    # How often each method produces the lowest value, placed on the x-axis at
+    # the number of evaluations it costs, so a method that wins more cases for
+    # fewer evaluations (further up and to the left) is the better algorithm.
+    # Costs are cumulative: the origin value comes for one evaluation, the best
+    # interpolation point needs the whole model build, and the bqmin step adds
+    # one more evaluation on top of that model.
+    win_counts = np.array([int(np.sum(winner == k)) for k in range(3)])
+    model_cost = float(np.mean(model_evals))
+    method_evals = np.array([1.0, model_cost, model_cost + 1.0])
+    bar_colors = ["tab:green", "tab:blue", "tab:orange"]
+
+    # Method name goes in the legend (not the x-axis) because the interpolation
+    # and bqmin costs are one evaluation apart and their tick labels would overlap.
+    for ev, wc, color, name in zip(method_evals, win_counts, bar_colors, names):
+        ax2.bar(ev, wc, width=0.6, color=color, alpha=0.85,
+                edgecolor="black", zorder=3, label=f"{name} (~{ev:.0f} evals)")
+        ax2.annotate(f"{wc}\n({100 * wc / N_TRIALS:.1f}%)", (ev, wc),
+                     textcoords="offset points", xytext=(0, 4),
+                     ha="center", va="bottom", fontsize=9)
+    ax2.set_xticks(method_evals)
+    ax2.set_xticklabels([f"{ev:.0f}" for ev in method_evals])
+    ax2.set_xlim(0, method_evals[-1] + 1.0)
+    ax2.set_ylim(0, win_counts.max() * 1.18)
+    ax2.set_xlabel("number of function evaluations the method costs")
+    ax2.set_ylabel(f"cases won — lowest f (out of {N_TRIALS})")
+    ax2.grid(axis="y", alpha=0.3, zorder=0)
+    ax2.legend(loc="upper left")
+    ax2.set_title("Method wins vs evaluation cost\n"
+                  "(more wins for fewer evaluations = better algorithm)")
 
     # Improvement over the original point, per radius domain, for both candidates.
     imp_interp = [f_origin[bin_idx == b] - f_interp[bin_idx == b]
@@ -166,7 +190,7 @@ def main():
                  f"[{RADIUS_RANGE[0]}, {RADIUS_RANGE[1]}] cut into {N_BINS} domains, "
                  f"random starting points in [{X_RANGE[0]}, {X_RANGE[1]}]^{DIM}")
     fig.tight_layout()
-    out = Path(__file__).resolve().parent / "BQmin_compare.png"
+    out = GRAPH_DIR / "BQmin_compare.png"
     fig.savefig(out, dpi=150)
     print(f"\nSaved graph to {out}")
 

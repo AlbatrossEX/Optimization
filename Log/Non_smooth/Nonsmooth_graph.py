@@ -1,7 +1,7 @@
 """Convergence graphs for the non-smooth suite (Running/Nonsmooth_Op.py).
 
-Reads the N-prefixed logs from Log/Logs and saves three figures next to this
-script:
+Reads the N-prefixed logs from Log/Logs and saves three figures into the Graphs
+folder next to this script:
   methods_convergence.png  - interpolation-model (gh 0) runs, coloured by
                              trust-region method
   gh_convergence.png       - method 0 runs, interpolation fit vs random +-1
@@ -18,6 +18,8 @@ from matplotlib.lines import Line2D
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 folder = os.path.join(os.path.dirname(script_dir), "Logs")  # Log/Logs
+graph_dir = os.path.join(script_dir, "Graphs")  # generated figures land here
+os.makedirs(graph_dir, exist_ok=True)
 
 line_pattern = re.compile(r"^(\d+),\[(.*?)\],([-+\deE.]+),\s*$")
 name_pattern = re.compile(
@@ -128,7 +130,7 @@ def convergence_figure(runs, key, styles, names, title, outfile):
     ax.legend(handles=handles, loc="upper right")
 
     fig.tight_layout()
-    fig.savefig(os.path.join(script_dir, outfile), dpi=150)
+    fig.savefig(os.path.join(graph_dir, outfile), dpi=150)
     print(f"saved {outfile}")
 
 
@@ -167,7 +169,7 @@ def final_vs_radius_figure(runs, outfile):
     ax.legend(fontsize=8)
 
     fig.tight_layout()
-    fig.savefig(os.path.join(script_dir, outfile), dpi=150)
+    fig.savefig(os.path.join(graph_dir, outfile), dpi=150)
     print(f"saved {outfile}")
 
 

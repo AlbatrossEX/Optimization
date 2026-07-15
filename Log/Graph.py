@@ -3,33 +3,31 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
+from matplotlib.lines import Line2D
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 folder = os.path.join(script_dir, "Logs")
 line_pattern = re.compile(r"^(\d+),\[(.*?)\],([-+\deE.]+),\s*$")
-method_pattern = re.compile(r"method(\d+)")
+gh_pattern = re.compile(r"gh(\d+)")
 
 # Skip the live/orphan log (New.txt) the same way cleanup_logs does.
 log_files = sorted(
     f for f in os.listdir(folder) if f.endswith(".txt") and f != "New.txt"
 )
 
-METHOD_NAMES = {0: "bqmin step", 1: "interp. point", 2: "better of two"}
-# One colour per method, all solid and equal width. Coinciding curves stay
-# visible by stacking: each method is shifted vertically by a fixed number of
-# screen points, so exact overlaps render as parallel bands instead of hiding.
+# Curves are discriminated ONLY by gh_type (the model builder): every gh 0 run
+# is one colour and every gh 1 run the other, regardless of method.
+GH_NAMES = {0: "gh 0 (interpolation model)", 1: "gh 1 (random +-1 model)"}
 LINEWIDTH = 1.8
-# Maximum-contrast palette (IBM colourblind-safe): black / vivid magenta /
-# amber differ strongly in BOTH hue and lightness (dark -> medium -> light),
-# so stacked bands and crossing curves are unmistakable.
-METHOD_STYLE = {
-    0: dict(color="#000000", linestyle="-", linewidth=LINEWIDTH),
-    1: dict(color="#DC267F", linestyle="-", linewidth=LINEWIDTH),
-    2: dict(color="#FFB000", linestyle="-", linewidth=LINEWIDTH),
+# Two maximum-contrast, colourblind-safe colours (IBM palette): blue vs orange
+# differ strongly in both hue and lightness, so the two gh types are unmistakable.
+GH_STYLE = {
+    0: dict(color="#648FFF", linestyle="-", linewidth=LINEWIDTH),
+    1: dict(color="#FE6100", linestyle="-", linewidth=LINEWIDTH),
 }
-# Stacking offset of exactly 1/3 linewidth: coinciding curves overlap into one
-# band whose top/bottom edges still reveal each colour, with no visible shift.
-METHOD_OFFSET_PTS = {0: LINEWIDTH / 3, 1: 0.0, 2: -LINEWIDTH / 3}
+# Small vertical stagger per gh_type (1/2 linewidth) so that coinciding curves
+# of different gh types render as adjacent bands instead of hiding each other.
+GH_OFFSET_PTS = {0: LINEWIDTH / 2, 1: -LINEWIDTH / 2}
 
 
 def pick_scale(values, ratio=50.0):
@@ -74,30 +72,29 @@ for log_file in log_files:
     iterations = iterations - iterations[0] + 1
     objectives = np.minimum.accumulate(np.array(objectives))
 
-    m = method_pattern.search(log_file)
-    method = int(m.group(1)) if m else None
-    curves.append((method, log_file, iterations, objectives))
+    g = gh_pattern.search(log_file)
+    gh = int(g.group(1)) if g else None
+    curves.append((gh, log_file, iterations, objectives))
 
 if not curves:
     raise SystemExit(f"No non-empty logs found in {folder}.")
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
-# fallback colours for logs without a parseable method
+# fallback colours for logs without a parseable gh_type
 fallback = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-for i, (method, log_file, iterations, objectives) in enumerate(curves):
-    if method in METHOD_STYLE:
-        style = dict(METHOD_STYLE[method])
+for i, (gh, log_file, iterations, objectives) in enumerate(curves):
+    if gh in GH_STYLE:
+        style = dict(GH_STYLE[gh])
     else:
         style = dict(color=fallback[i % len(fallback)], linewidth=1.5)
     stack = mtransforms.ScaledTranslation(
-        0.0, METHOD_OFFSET_PTS.get(method, 0.0) / 72.0, fig.dpi_scale_trans
+        0.0, GH_OFFSET_PTS.get(gh, 0.0) / 72.0, fig.dpi_scale_trans
     )
     ax.step(
         iterations,
         objectives,
         where="post",
-        # label=log_file,
         alpha=0.85,
         transform=ax.transData + stack,
         **style,
@@ -114,8 +111,12 @@ ax.set_ylim(*limits(all_obj, yscale))
 
 ax.set_xlabel("Function evaluations")
 ax.set_ylabel("Best objective so far")
-ax.set_title("Convergence (coinciding curves rendered as adjacent hairlines)")
-ax.legend(fontsize=7, loc="upper right")
+ax.set_title("Convergence by gh_type (curves coloured only by model builder)")
+# One legend entry per gh_type present, rather than one per log file.
+present_gh = [g for g in GH_STYLE if any(c[0] == g for c in curves)]
+handles = [Line2D([0], [0], label=GH_NAMES[g], **GH_STYLE[g]) for g in present_gh]
+if handles:
+    ax.legend(handles=handles, fontsize=9, loc="upper right")
 
 plt.tight_layout()
 plt.savefig(os.path.join(script_dir, "convergence.png"), dpi=150)

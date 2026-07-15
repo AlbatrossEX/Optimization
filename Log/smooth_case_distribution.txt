@@ -1,0 +1,19 @@
+case set: 300 runs (2000 iterations each) = 10 starting points x 10 radii x 3 method/gh combos
+  radii: 0.01 (30 runs), 0.0215 (30 runs), 0.0464 (30 runs), 0.1 (30 runs), 0.215 (30 runs), 0.464 (30 runs), 1 (30 runs), 2.15 (30 runs), 4.64 (30 runs), 10 (30 runs)
+  methods: 0 = bqmin step (100 runs), 1 = best interpolation point (100 runs), 2 = better of the two (100 runs)
+  gh types: 0 (300 runs)
+  method/gh combos:
+    method 0 (bqmin step) x gh 0: 100 runs, 10 radii 0.01..10
+    method 1 (best interpolation point) x gh 0: 100 runs, 10 radii 0.01..10
+    method 2 (better of the two) x gh 0: 100 runs, 10 radii 0.01..10
+  starting points:
+    T000..T029  [0.82, -1.38, -2.75]  (30 runs)
+    T030..T059  [-2.9, 1.88, 2.48]  (30 runs)
+    T060..T089  [0.64, 1.38, 0.26]  (30 runs)
+    T090..T119  [2.61, 1.9, -2.98]  (30 runs)
+    T120..T149  [2.14, -2.8, 1.38]  (30 runs)
+    T150..T179  [-1.95, 2.18, 0.25]  (30 runs)
+    T180..T209  [-1.2, -0.46, -2.83]  (30 runs)
+    T210..T239  [-2.25, 1.02, 0.88]  (30 runs)
+    T240..T269  [0.69, -0.7, 2.98]  (30 runs)
+    T270..T299  [2.89, 1.11, 0.9]  (30 runs)

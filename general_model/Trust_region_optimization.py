@@ -223,6 +223,78 @@ class TR_function:
 
         return x
 
+    def trust_region_optimization_3(
+        self,
+        x_0: Array1D,
+        miu: float,
+        theta: float,
+        shrink: float,
+        extend: float,
+        radius: float,
+        p: float,
+        max_iter: int = 1000,
+        gh_type: int = 0,
+    ) -> Array1D:
+        """Dynamic interpolation point: walks the poised set one evaluation at a
+        time and moves to the FIRST point that passes the acceptance test,
+        abandoning the rest of the set, then rebuilds the set at the new point.
+
+        Method 1 pays for the whole interpolation set before stepping to its
+        minimum; this solver stops paying as soon as any poised point is
+        acceptable, so a successful step usually costs only a few evaluations.
+        A full sweep with no acceptable point shrinks the radius, like the
+        other solvers' failed iterations.
+        """
+        if gh_type != 0:
+            raise ValueError(
+                "dynamic interpolation point requires the interpolation model (gh_type 0)"
+            )
+        # Imported here, not at module level: the classes that own the smooth
+        # machinery import this module, so a top-level import could go circular.
+        from .Smooth.algorism6_4 import algorithm_6_4
+
+        x = np.array(x_0, dtype=float, copy=True)
+        delta = float(radius)
+        # output() (not self.f) so the solver's own evaluations are counted and logged
+        fx = float(self.output(x))
+
+        for _ in range(max_iter):
+            # Geometry only: fx is already known, so unlike GH the set is built
+            # without spending an evaluation on the centre point.
+            offsets, _ = algorithm_6_4(
+                Y=np.zeros_like(x.reshape(1, -1)),
+                Delta=delta,
+                f=np.array([[fx]]),
+            )
+            poised = offsets + x
+
+            moved = False
+            for point in poised:
+                step = point - x
+                step_norm = float(np.linalg.norm(step, 2))
+                # the centre itself sits in the poised set; its value is fx
+                if step_norm == 0.0:
+                    continue
+                f_trial = float(self.output(point))
+                actual_reduction = fx - f_trial
+                if not np.isfinite(actual_reduction):
+                    continue
+                roll = actual_reduction / (theta * step_norm ** (1.0 + p))
+
+                if roll >= miu:
+                    # switch immediately: the remaining points are never evaluated
+                    x = np.array(point, dtype=float, copy=True)
+                    fx = f_trial
+                    if roll > 0.75:
+                        delta *= extend
+                    moved = True
+                    break
+
+            if not moved:
+                delta *= shrink
+
+        return x
+
     def trust_region_optimization_function(
         self,
         method: int,
@@ -236,16 +308,18 @@ class TR_function:
         max_iter: int = 1000,
         gh_type: int = 0,
     ) -> Array1D:
-        """Dispatches to a solver by method: 0 = bqmin step, 1 = best interpolation point, 2 = better of the two.
+        """Dispatches to a solver by method: 0 = bqmin step, 1 = best interpolation
+        point, 2 = better of the two, 3 = dynamic interpolation point.
 
         gh_type selects the model builder inside GH (0 = quadratic interpolation
         fit; NonSmoothFunction additionally supports 1 = random +-1 model, which
-        only works with method 0 since it builds no interpolation set).
+        only works with method 0 since methods 1/2/3 need an interpolation set).
         """
         solvers = (
             self.trust_region_optimization_0,
             self.trust_region_optimization_1,
             self.trust_region_optimization_2,
+            self.trust_region_optimization_3,
         )
         return solvers[int(method)](
             x_0=x_0,
