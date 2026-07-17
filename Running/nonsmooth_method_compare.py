@@ -43,7 +43,7 @@ CONSTANTS = (
 
 PROBLEM = {"kind": "nonsmooth", "m": 15, "nprob": 8}
 
-EVAL_BUDGET = 2000  # function evaluations per run (the stopping condition)
+EVAL_BUDGET = 10000  # function evaluations per run (the stopping condition)
 STARTS = random_starts(count=8, dim=3, box=3.0, seed=0)
 # 90% of the radii in [0.01, 1], 10% in (1, 3].
 RADII = effort_radii(count=20, low=0.01, mid=1.0, high=3.0, low_frac=0.9)

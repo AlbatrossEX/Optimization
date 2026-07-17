@@ -49,7 +49,7 @@ CONSTANTS = (
 
 PROBLEM = {"kind": "nonsmooth", "m": 15, "nprob": 8}
 
-EVAL_BUDGET = 2000  # function evaluations per run (the stopping condition)
+EVAL_BUDGET = 10000  # function evaluations per run (the stopping condition)
 STARTS = random_starts(count=10, dim=3, box=3.0, seed=0)
 # Broad baseline sweep: log-uniform across the whole [0.01, 10] radius decade.
 RADII = log_radii(0.01, 10.0, 10)

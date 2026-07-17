@@ -176,7 +176,7 @@ def main():
                  f"[{RADIUS_RANGE[0]}, {RADIUS_RANGE[1]}] cut into {N_BINS} domains, "
                  f"random starting points in [{X_RANGE[0]}, {X_RANGE[1]}]^{DIM}")
     fig.tight_layout()
-    out = GRAPH_DIR / "BQmin_compare.png"
+    out = GRAPH_DIR / "BQ_subcompare.png"
     fig.savefig(out, dpi=150)
     print(f"\nSaved graph to {out}")
 
