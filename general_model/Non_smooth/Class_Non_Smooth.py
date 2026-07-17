@@ -18,10 +18,9 @@ class NonSmoothFunction(TR_function):
             f_out: NDArray[np.floating] = np.array([[self.output(x)]])
             offsets, _ = algorithm_6_4(Y=np.zeros_like(x.reshape(1, -1)), Delta=radius, f=f_out)
             poised = offsets + x
-            n = poised.shape[0]
-            f_poised: NDArray[np.floating] = np.zeros((n, 1))
-            for i in range(n):
-                f_poised[i] = self.output(poised[i, :])
+            # price the whole poised set at once (optionally multi-threaded; see
+            # TR_function._evaluate_poised) and shape it as a column
+            f_poised: NDArray[np.floating] = self._evaluate_poised(poised).reshape(-1, 1)
             self.f_poised = f_poised
             self.poised = poised
             # fit on the offsets so g is the model gradient at x (matching

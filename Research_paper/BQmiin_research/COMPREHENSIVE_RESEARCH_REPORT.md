@@ -11,10 +11,10 @@
 
 This research compares two trust-region step selection strategies:
 
-| Strategy | Mechanism | Cost | Best For |
-|----------|-----------|------|----------|
-| **BQMIN** | Minimize fitted quadratic model over trust box | ~12 evals | Convergence speed (66.9% win) |
-| **Interpolation** | Return best point from interpolation set | ~11 evals | Finding minimum (41.2% top-10%) |
+| Strategy          | Mechanism                                      | Cost      | Best For                        |
+| ----------------- | ---------------------------------------------- | --------- | ------------------------------- |
+| **BQMIN**         | Minimize fitted quadratic model over trust box | ~12 evals | Convergence speed (66.9% win)   |
+| **Interpolation** | Return best point from interpolation set       | ~11 evals | Finding minimum (41.2% top-10%) |
 
 **Critical Finding:** The best strategy depends on optimization goal:
 - **For speed:** BQMIN wins 66.9% overall (single-step trials)
@@ -291,15 +291,15 @@ return G + H @ x, H  # G + H@x is gradient at x
 
 ### Comprehensive Performance Matrix
 
-| Radius Bin | Total | Top-10% | Top-10% % | BQMIN | Interp | Origin |
-|---|---|---|---|---|---|---|
-| [0.01, 0.028) | 854 | 23 | 2.7% | 100% | 0% | 0% |
-| [0.028, 0.079) | 870 | 19 | 2.2% | 100% | 0% | 0% |
-| [0.079, 0.224) | 821 | 41 | 5.0% | 100% | 0% | 0% |
-| [0.224, 0.63) | 826 | 65 | 7.9% | 91.6% | 8.4% | 0% |
-| [0.63, 1.775) | 806 | 81 | 19.4% | 70.4% | 27.2% | 2.5% |
-| [1.775, 5.0) | 823 | 83 | 23.8% | 9.6% | 81.9% | 8.4% |
-| **TOTAL** | **5000** | **500** | **10%** | **55.6%** | **41.2%** | **3.2%** |
+| Radius Bin     | Total    | Top-10% | Top-10% % | BQMIN     | Interp    | Origin   |
+| -------------- | -------- | ------- | --------- | --------- | --------- | -------- |
+| [0.01, 0.028)  | 854      | 23      | 2.7%      | 100%      | 0%        | 0%       |
+| [0.028, 0.079) | 870      | 19      | 2.2%      | 100%      | 0%        | 0%       |
+| [0.079, 0.224) | 821      | 41      | 5.0%      | 100%      | 0%        | 0%       |
+| [0.224, 0.63)  | 826      | 65      | 7.9%      | 91.6%     | 8.4%      | 0%       |
+| [0.63, 1.775)  | 806      | 81      | 19.4%     | 70.4%     | 27.2%     | 2.5%     |
+| [1.775, 5.0)   | 823      | 83      | 23.8%     | 9.6%      | 81.9%     | 8.4%     |
+| **TOTAL**      | **5000** | **500** | **10%**   | **55.6%** | **41.2%** | **3.2%** |
 
 ### Key Metrics Comparison
 

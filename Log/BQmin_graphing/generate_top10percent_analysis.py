@@ -15,20 +15,16 @@ Run: python3 Log/BQmin_graphing/generate_top10percent_analysis.py
 import sys
 from pathlib import Path
 
-# parents[2] is the project root: this file sits two levels down, in
-# Log/BQmin_graphing/ (it was written for Research_paper/, one level down).
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-GRAPH_DIR = Path(__file__).resolve().parent / "Graphs"  # generated figures land here
-GRAPH_DIR.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # Log/BQmin_graphing/
 
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from construct_functions import build_smooth_problem
-from general_model.Smooth.models.bqmin import bqmin
+from bq_common import GRAPH_DIR, build_study_problem, compare_once
+
+GRAPH_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configuration
 N_TRIALS = 5000
@@ -38,18 +34,7 @@ N_BINS = 6
 X_RANGE = (-2.0, 2.0)
 
 # Initialize problem
-Function_object = build_smooth_problem(m=15, nprob=8)
-
-
-def compare_once(x, radius):
-    """Return (f at origin, best f over interpolation points, f at bqmin step)."""
-    f_origin = float(Function_object.f(x))
-    g, h = Function_object.GH(x, radius)
-    f_interp = float(np.min(Function_object.f_poised))
-    bound = radius * np.ones(DIM)
-    step, _ = bqmin(h, g, -bound, bound)
-    f_bq = float(Function_object.f(x + np.asarray(step, dtype=float)))
-    return f_origin, f_interp, f_bq
+Function_object = build_study_problem(m=15, nprob=8)
 
 
 def main():
@@ -65,7 +50,9 @@ def main():
 
     for trial in range(N_TRIALS):
         x = rng.uniform(*X_RANGE, DIM)
-        f_origin[trial], f_interp[trial], f_bq[trial] = compare_once(x, radii[trial])
+        f_origin[trial], f_interp[trial], f_bq[trial] = compare_once(
+            Function_object, x, radii[trial], DIM
+        )
         if (trial + 1) % 1000 == 0:
             print(f"  {trial + 1}/5000")
 

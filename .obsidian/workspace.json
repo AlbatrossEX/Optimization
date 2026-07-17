@@ -11,17 +11,30 @@
             "id": "b1372d03b62eaf57",
             "type": "leaf",
             "state": {
+              "type": "pdf",
+              "state": {
+                "file": "Research_paper/Argonne Optimization/BOOKs/22m1524072.pdf"
+              },
+              "icon": "lucide-file-text",
+              "title": "22m1524072"
+            }
+          },
+          {
+            "id": "1a25d81d9bb097c5",
+            "type": "leaf",
+            "state": {
               "type": "markdown",
               "state": {
-                "file": "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+                "file": "Research_paper/smoothed_dfo_trns_paper.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "COMPREHENSIVE_RESEARCH_REPORT"
+              "title": "smoothed_dfo_trns_paper"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -94,7 +107,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+                "file": "Research_paper/smoothed_dfo_trns_paper.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +117,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "COMPREHENSIVE_RESEARCH_REPORT 的反向链接列表"
+              "title": "smoothed_dfo_trns_paper 的反向链接列表"
             }
           },
           {
@@ -113,12 +126,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+                "file": "Research_paper/smoothed_dfo_trns_paper.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "COMPREHENSIVE_RESEARCH_REPORT 的出链列表"
+              "title": "smoothed_dfo_trns_paper 的出链列表"
             }
           },
           {
@@ -156,13 +169,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+                "file": "Research_paper/smoothed_dfo_trns_paper.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "COMPREHENSIVE_RESEARCH_REPORT 的大纲"
+              "title": "smoothed_dfo_trns_paper 的大纲"
             }
           }
         ]
@@ -183,31 +196,33 @@
       "bases:新建数据库": false
     }
   },
-  "active": "b1372d03b62eaf57",
+  "active": "1a25d81d9bb097c5",
   "lastOpenFiles": [
-    "Log/Logs/T294_start2.89-1.11-0.9_radius4.64_p1_method0_gh0.txt",
-    "Log/Logs/T297_start2.89-1.11-0.9_radius10_p1_method0_gh0.txt",
-    "Log/Logs/T270_start2.89-1.11-0.9_radius0.01_p1_method0_gh0.txt",
-    "Log/Logs/T269_start0.69--0.7-2.98_radius10_p1_method2_gh0.txt",
-    "Log/Logs/T298_start2.89-1.11-0.9_radius10_p1_method1_gh0.txt",
-    "Log/Logs/T292_start2.89-1.11-0.9_radius2.15_p1_method1_gh0.txt",
-    "Log/Logs/T266_start0.69--0.7-2.98_radius4.64_p1_method2_gh0.txt",
-    "Log/Logs/T286_start2.89-1.11-0.9_radius0.464_p1_method1_gh0.txt",
-    "Log/Logs/T239_start-2.25-1.02-0.88_radius10_p1_method2_gh0.txt",
-    "Log/Logs/T283_start2.89-1.11-0.9_radius0.215_p1_method1_gh0.txt",
-    "Log/Logs/T237_start-2.25-1.02-0.88_radius10_p1_method0_gh0.txt",
-    "Research_paper/COMPREHENSIVE_RESEARCH_REPORT.md",
-    "Log/BQmin_graphing/Graphs/BQmin_TOP10PERCENT.png",
-    "Log/BQmin_graphing/Graphs/BQmin_compare.png",
-    "Log/BQmin_graphing/Graphs/win_count_p1_gh0.png",
-    "Log/BQmin_graphing/Graphs/winner_grid_p1_gh0.png",
-    "Log/Non_smooth/Graphs/win_count.png",
-    "Log/Non_smooth/Graphs/winner_compare.png",
-    "Log/Non_smooth/Graphs/final_vs_radius.png",
-    "Log/Non_smooth/Graphs/gh_convergence.png",
-    "Log/Non_smooth/Graphs/methods_convergence.png",
-    "Log/BQmin_graphing/win_count_p1_gh0.png",
+    "Research_paper/Argonne Optimization/Numpy.md",
+    "Research_paper/Argonne Optimization/DF-Optimization Notes.md",
+    "Research_paper/smoothed_dfo_trns_paper.md",
+    "Research_paper/Argonne Optimization/BOOKs/Trust-Region Methods for the DFO of Nonsmooth BBox (2026-01-11 23-56-44).pdf",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G014_start0.64-1.38-0.26_radius2_p1_method0_gh0.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G013_start0.64-1.38-0.26_radius1_p1_method0_gh0.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G009_start-2.9-1.88-2.48_radius2_p1_method0_gh0.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G008_start-2.9-1.88-2.48_radius1_p1_method0_gh0.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G005_start-2.9-1.88-2.48_radius0.1_p1_method0_gh0.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G006_start-2.9-1.88-2.48_radius0.3_p1_method0_gh0.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G010_start0.64-1.38-0.26_radius0.1_p1_method0_gh0.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/New_53852.txt",
+    "Log/Logs/nonsmooth_gh_compare_20260716-233811/New_62304.txt",
+    "Log/Graphs/convergence_nonsmooth_op.png",
+    "Log/BQmin_graphing/Graphs/win_count_smooth.png",
+    "Log/BQmin_graphing/Graphs/winner_grid_smooth.png",
     "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+    "Log/Nonsmooth_gh_compare/Graphs/final_vs_radius.png",
+    "Log/Nonsmooth_gh_compare/Graphs/gh_convergence.png",
+    "Log/Nonsmooth_method_compare/Graphs/win_count.png",
+    "Log/Nonsmooth_method_compare/Graphs/winner_grid.png",
+    "Log/Nonsmooth_method_compare/Graphs/final_vs_radius.png",
+    "Log/Nonsmooth_method_compare/Graphs/methods_convergence.png",
+    "Log/Smooth_four_methods/Graphs/win_count.png",
+    "Research_paper/COMPREHENSIVE_RESEARCH_REPORT.md",
     "Research_paper/EXECUTIVE_SUMMARY_WITH_TOP10.md",
     "Research_paper/RESEARCH_SUMMARY.md",
     "Research_paper/technical_supplement_bqmin_interpolation.md",

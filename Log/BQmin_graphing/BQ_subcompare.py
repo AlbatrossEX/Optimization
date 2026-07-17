@@ -1,10 +1,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root
-
-GRAPH_DIR = Path(__file__).resolve().parent / "Graphs"  # generated figures land here
-GRAPH_DIR.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # Log/BQmin_graphing/
 
 import numpy as np
 import matplotlib
@@ -12,11 +9,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from construct_functions import build_smooth_problem
-from general_model.Smooth.models.bqmin import bqmin
+from bq_common import GRAPH_DIR, build_study_problem, compare_once
 
-# same problem the suite in Running/main.py uses (Bard, nprob=8)
-Function_object = build_smooth_problem(m=15, nprob=8)
+GRAPH_DIR.mkdir(parents=True, exist_ok=True)
+
+# same problem the smooth suite uses (Bard, nprob=8)
+Function_object = build_study_problem(m=15, nprob=8)
 
 N_TRIALS = 5000  # Reduced from 100000 for reasonable runtime
 DIM = 3
@@ -24,20 +22,6 @@ RADIUS_RANGE = (0.01, 5.0)   # radii drawn log-uniformly on this interval
 N_BINS = 6                   # domains for the boxplot panels and winner counts
 N_BINS_FINE = 25             # thinner domains for the median-advantage curve (~80 trials each)
 X_RANGE = (-2.0, 2.0)
-
-
-def compare_once(x, radius):
-    """Return (f at the original point, best f over interpolation points,
-    f at the bqmin step) for one trial."""
-    f_origin = float(Function_object.f(x))
-
-    g, h = Function_object.GH(x, radius)
-    f_interp = float(np.min(Function_object.f_poised))
-
-    bound = radius * np.ones(DIM)
-    step, _ = bqmin(h, g, -bound, bound)
-    f_bq = float(Function_object.f(x + np.asarray(step, dtype=float)))
-    return f_origin, f_interp, f_bq
 
 
 def main():
@@ -55,7 +39,9 @@ def main():
     for trial in range(N_TRIALS):
         x = rng.uniform(*X_RANGE, DIM)
         before = Function_object.count
-        f_origin[trial], f_interp[trial], f_bq[trial] = compare_once(x, radii[trial])
+        f_origin[trial], f_interp[trial], f_bq[trial] = compare_once(
+            Function_object, x, radii[trial], DIM
+        )
         model_evals[trial] = Function_object.count - before
         print(f"trial {trial + 1:4d}  radius={radii[trial]:<9.4g} "
               f"f_origin={f_origin[trial]:.6g}  "

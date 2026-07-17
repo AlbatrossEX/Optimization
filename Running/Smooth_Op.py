@@ -1,8 +1,18 @@
-"""Entry point for the smooth test suite.
+"""Research objective (baseline) — Smooth function: the original three-method
+comparison over the full radius decade.
 
-Everything about the experiment is declared here — the function, constants,
-starting points, radii, gh types, trust-region methods, iteration count and case
-distribution. general_model/Optimize.py owns only how the run is executed.
+The historical smooth suite: the smooth (differentiable) calfun problem solved by
+the three original trust-region methods (0 = bqmin step, 1 = best interpolation
+point, 2 = better of the two) against the quadratic interpolation model, with the
+radius swept log-uniformly across the whole [0.01, 10] decade. It is kept as the
+broad-sweep baseline; the focused four-method study (which adds method 3 and
+concentrates 90% of the radii in [0.01, 1]) lives in Running/smooth_four_methods.py.
+
+Everything about the experiment is declared here; general_model/Optimize.py owns
+only how the run is executed. The stopping condition is a function-evaluation
+budget (EVAL_BUDGET). Logs land in their own Log/Logs/smooth_op_<timestamp>/
+directory and are never cleared; the archived legacy runs live in
+Log/Logs/smooth_op_legacy_*/. Graph them with Log/BQmin_graphing/BQ_algo_compare.py.
 """
 import sys
 from pathlib import Path
@@ -24,34 +34,31 @@ CONSTANTS = (
     2.0,   # extend
     1.0,   # radius (single-run default; the suite varies radius per case)
     1.0,   # p
-    2,     # method (single-run default; the suite varies method per case)
+    0,     # method (single-run default; the suite varies method per case)
     0,     # gh_type (single-run default; the suite varies gh_type per case)
 )
 
-# Function construction: a picklable spec (kind is "smooth" or "nonsmooth");
-# each parallel worker builds its own problem via construct_functions.build_problem.
+# Picklable problem spec; each parallel worker builds its own via build_problem.
 PROBLEM = {"kind": "smooth", "m": 15, "nprob": 8}
 
-ITERATION = 2000
+EVAL_BUDGET = 2000  # function evaluations per run (the stopping condition)
 STARTS = random_starts(count=10, dim=3, box=3.0, seed=0)
+# Broad baseline sweep: log-uniform across the whole [0.01, 10] radius decade.
 RADII = log_radii(0.01, 10.0, 10)
 
-# (method, gh_type) pairs run for every start x radius: all three trust-region
-# methods against the quadratic interpolation model.
+# The three original trust-region methods against the interpolation model (gh 0).
 COMBOS = [(0, 0), (1, 0), (2, 0)]
 
-# Label prefix for this suite's logs; the non-smooth suite uses "N" and the two
-# coexist in Log/Logs. Graph these with Log/Graph.py.
 PREFIX = "T"
 
+EXPERIMENT = Experiment(
+    name="smooth_op",
+    problem=PROBLEM,
+    constants=CONSTANTS,
+    cases=build_cases(STARTS, RADII, COMBOS, PREFIX),
+    evaluations=EVAL_BUDGET,
+    prefix=PREFIX,
+)
+
 if __name__ == "__main__":
-    run_experiment(
-        Experiment(
-            name="smooth",
-            problem=PROBLEM,
-            constants=CONSTANTS,
-            cases=build_cases(STARTS, RADII, COMBOS, PREFIX),
-            iteration=ITERATION,
-            prefix=PREFIX,
-        )
-    )
+    run_experiment(EXPERIMENT)
