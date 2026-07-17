@@ -13,8 +13,9 @@ behaviour is most interesting: 90% of the sampled radii fall in [0.01, 1] and
 10% in (1, 3] (see effort_radii). The stopping condition is a
 function-evaluation budget (EVAL_BUDGET), not an iteration count.
 
-Logs land in their own Log/Logs/smooth_four_methods_<timestamp>/ directory and
-are never cleared. Graph them with Log/Smooth_four_methods/graph.py.
+Logs land in Log/Logs/<EVAL_BUDGET> Evalu/Smooth_four_methods/ — found or
+created on the way in, so re-runs at the same budget share the directory and
+replace same-named logs. Graph them with Log/Smooth_four_methods/graph.py.
 """
 import sys
 from pathlib import Path

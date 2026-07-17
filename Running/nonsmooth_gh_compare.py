@@ -15,8 +15,9 @@ Radii concentrate the effort where trust-region behaviour is most interesting:
 function-evaluation budget (EVAL_BUDGET). gh_type 1 draws a random model, so its
 block is repeated to average over that draw.
 
-Logs land in their own Log/Logs/nonsmooth_gh_compare_<timestamp>/ directory and
-are never cleared. Graph them with Log/Nonsmooth_gh_compare/graph.py.
+Logs land in Log/Logs/<EVAL_BUDGET> Evalu/Nonsmooth_gh_compare/ — found or
+created on the way in, so re-runs at the same budget share the directory and
+replace same-named logs. Graph them with Log/Nonsmooth_gh_compare/graph.py.
 """
 import sys
 from pathlib import Path

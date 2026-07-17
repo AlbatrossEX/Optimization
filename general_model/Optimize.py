@@ -10,9 +10,10 @@ The helpers here (build_cases, log_radii, effort_radii, random_starts) are
 generators, not configuration: every value they produce comes from their
 caller's arguments.
 
-Logs: every run of an experiment writes into its OWN timestamped subdirectory
-Log/Logs/<name>_<timestamp>/. Runs are never cleared and never overwrite each
-other, so a full history of generated logs accumulates under Log/Logs.
+Logs: organized by evaluation budget first, then by experiment. A run writes
+into Log/Logs/<evaluations> Evalu/<Name>/, found or created on the way in, so
+the same execution code run at the same budget always lands in the same
+directory (same-named logs from an earlier run are replaced).
 """
 import os
 import re
@@ -20,7 +21,6 @@ import numpy as np
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import datetime
 from numpy.typing import NDArray
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -34,8 +34,9 @@ Array1D = NDArray[np.floating]
 Constants = Tuple[float, float, float, float, float, float, int, int]
 Case = Tuple[str, Array1D, float, int, int]  # (label, x_0, radius, method, gh_type)
 
-# Root under which every run's logs live. A run of an experiment gets its own
-# timestamped subdirectory below this; this folder itself is never wiped.
+# Root under which every run's logs live. A run of an experiment writes into
+# the budget-keyed subdirectory <evaluations> Evalu/<Name>/ below this; this
+# folder itself is never wiped.
 # Anchored to the project root so runs work regardless of the caller's cwd.
 LOG_ROOT = Path(__file__).resolve().parents[1] / "Log" / "Logs"
 # How many pipelines (worker processes) the suite fans out into. The objective is
@@ -62,8 +63,9 @@ METHOD_NAMES = {
 class Experiment:
     """A complete description of what to run, assembled by a Running/ entry point.
 
-    name        names this experiment; each run writes logs into a fresh
-                Log/Logs/<name>_<timestamp>/ directory.
+    name        names this experiment; a run writes its logs into the shared
+                Log/Logs/<evaluations> Evalu/<Name>/ directory (found or
+                created; re-runs at the same budget replace same-named logs).
     problem     is a picklable build_problem spec; workers each build their own.
     evaluations is the function-evaluation budget per run (the stopping condition).
     prefix      is the label prefix stamped on this experiment's log filenames.
@@ -271,30 +273,35 @@ def describe_cases(cases: List[Case], evaluations: int) -> str:
 # --- Logging -----------------------------------------------------------------
 
 
-def new_run_dir(name: str, root: Path = LOG_ROOT) -> Path:
-    """A fresh, timestamped subdirectory for one run's logs: Log/Logs/<name>_<ts>/.
+def _dir_name(name: str) -> str:
+    """Directory form of an experiment name: first letter capitalized, matching
+    the Log/Logs/<N> Evalu/<Name>/ template (e.g. Smooth_four_methods)."""
+    return name[:1].upper() + name[1:]
 
-    Each run gets its own directory so nothing is ever cleared or overwritten;
-    the timestamp keeps repeated runs of the same experiment side by side.
+
+def run_dir_for(name: str, evaluations: int, root: Path = LOG_ROOT) -> Path:
+    """Find or create the log directory for one experiment at one budget:
+    Log/Logs/<evaluations> Evalu/<Name>/.
+
+    Logs are organized by evaluation budget first, then by experiment, so the
+    same execution code run at the same budget always writes into the same
+    directory; same-named logs from an earlier run are replaced.
     """
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = root / f"{name}_{stamp}"
-    # microsecond suffix only if two runs somehow land in the same second
-    if run_dir.exists():
-        run_dir = root / f"{name}_{stamp}-{datetime.now().strftime('%f')}"
+    run_dir = root / f"{int(evaluations)} Evalu" / _dir_name(name)
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
 
 
 def latest_run_dir(name: str, root: Path = LOG_ROOT) -> Optional[Path]:
-    """The most recent Log/Logs/<name>_*/ directory, or None if none exist.
+    """The most recently written log directory for an experiment, or None.
 
-    Graph scripts use this to find the logs from the last run of an experiment
-    without being told the timestamp."""
-    candidates = sorted(
-        (p for p in root.glob(f"{name}_*") if p.is_dir()),
-        key=lambda p: p.stat().st_mtime,
-    )
+    Searches the budget-keyed layout Log/Logs/<N> Evalu/<Name>/ (when several
+    budgets exist, the most recently modified wins) and falls back to any
+    legacy timestamped Log/Logs/<name>_<timestamp>/ directories. Graph scripts
+    use this to find the logs from the last run without being told the budget."""
+    candidates = [p for p in root.glob(f"* Evalu/{_dir_name(name)}") if p.is_dir()]
+    candidates += [p for p in root.glob(f"{name}_*") if p.is_dir()]
+    candidates.sort(key=lambda p: p.stat().st_mtime)
     return candidates[-1] if candidates else None
 
 
@@ -320,8 +327,9 @@ def main(
 ) -> Array1D:
     """Single optimization run on an already-constructed problem object.
 
-    Writes one log into a fresh Log/Logs/<name>_<timestamp>/ directory; nothing
-    is cleared.
+    Writes one log into the shared Log/Logs/<evaluations> Evalu/<Name>/
+    directory (found or created); a same-named log from an earlier run at the
+    same budget is replaced.
     """
     miu, theta, shrink, extend, radius_c, p, method_c, gh_type_c = constants
     if radius is None:
@@ -331,7 +339,7 @@ def main(
     if gh_type is None:
         gh_type = gh_type_c
 
-    run_dir = new_run_dir(name)
+    run_dir = run_dir_for(name, evaluations)
     live = run_dir / "New.txt"
     problem.redirect_log(str(live))
 
@@ -351,7 +359,9 @@ def main(
     print(problem.output(result))
     problem.flush_log()
     name_txt = log_name(label, x_0, radius, p, method, gh_type)
-    live.rename(run_dir / f"{name_txt}.txt")
+    # replace(), not rename(): re-running the same case at the same budget
+    # overwrites the previous log (rename would raise on Windows).
+    live.replace(run_dir / f"{name_txt}.txt")
     return result
 
 
@@ -407,7 +417,9 @@ def run_case(case: Case, evaluations: int) -> Tuple[str, str, float]:
     _PROBLEM.flush_log()
 
     name = log_name(label, x_0, radius, p, method, gh_type)
-    live.rename(_RUN_DIR / f"{name}.txt")
+    # replace(), not rename(): re-running the same case at the same budget
+    # overwrites the previous log (rename would raise on Windows).
+    live.replace(_RUN_DIR / f"{name}.txt")
     return label, name, f_final
 
 
@@ -437,9 +449,10 @@ def run_suite(
 
 
 def run_experiment(experiment: Experiment, max_workers: Optional[int] = MAX_WORKERS) -> Path:
-    """Report, then run every case on the pool, writing all logs into a fresh
-    per-run directory. Returns the run directory. Nothing is cleared."""
-    run_dir = new_run_dir(experiment.name)
+    """Report, then run every case on the pool, writing all logs into the
+    experiment's budget-keyed directory (found or created). Returns that
+    directory. Re-runs at the same budget land in the same place."""
+    run_dir = run_dir_for(experiment.name, experiment.evaluations)
 
     # Details and distribution of what is about to run: printed up front and
     # saved next to this run's logs so it can be inspected after the run too.

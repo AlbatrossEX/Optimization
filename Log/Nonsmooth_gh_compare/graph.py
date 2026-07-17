@@ -7,6 +7,8 @@ into the Graphs folder next to this script:
                         (gh 0 = interpolation fit, gh 1 = random +-1 model)
   final_vs_radius.png - median final objective per starting radius, one line per
                         GH model builder
+  winner_compare.png  - every case overlaid on one axes, coloured by the GH model
+                        leading there (each gh 1 draw raced against gh 0)
 
 Both series are the same trust-region solver (method 0, bqmin step): the only
 thing that differs is the model builder, so any gap between the curves is the
@@ -21,6 +23,7 @@ import graph_common as gc
 
 NAME = "nonsmooth_gh_compare"
 ENTRY = "nonsmooth_gh_compare"
+GH_TYPES = (0, 1)  # the two model builders raced in winner_compare.png
 
 graph_dir = Path(__file__).resolve().parent / "Graphs"
 graph_dir.mkdir(exist_ok=True)
@@ -46,6 +49,24 @@ def main():
         str(graph_dir / "final_vs_radius.png"),
         title="Final objective vs starting radius (non-smooth, GH 0 vs GH 1)",
     )
+
+    # Per-case winner overlay, raced by GH model builder (gh 0 vs gh 1). gh 1 is
+    # drawn twice, so each of its draws races the shared gh 0 run as its own case.
+    cases = gc.group_cases(runs, GH_TYPES, key="gh")
+    if cases:
+        gc.winner_overlay_figure(
+            cases,
+            GH_TYPES,
+            str(graph_dir / "winner_compare.png"),
+            title=f"Per-case winner over the evaluation budget "
+            f"({len(cases)} cases, non-smooth, GH 0 vs GH 1)\n"
+            "each curve is one starting condition, coloured by the GH model leading there",
+            colors_base=gc.GH_COLOR,
+            names_base=gc.GH_NAMES,
+            ylabel="Best objective so far (best of the two GH models)",
+        )
+    else:
+        print("no complete gh 0 vs gh 1 cases; skipped winner_compare.png.")
 
 
 if __name__ == "__main__":

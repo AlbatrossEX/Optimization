@@ -3,7 +3,7 @@ latest run, coloured by the GH model builder.
 
 Usage:
   py Log/Graph.py                 # defaults to the nonsmooth_op run (has gh 0 & 1)
-  py Log/Graph.py smooth_op       # any experiment name (a Log/Logs/<name>_*/ run)
+  py Log/Graph.py smooth_op       # any experiment name (a Log/Logs/<N> Evalu/<Name>/ run)
 
 Saves Log/Graphs/convergence_<name>.png. This is the thin, general-purpose
 counterpart to the per-objective scripts under Log/<Objective>/; all the parsing

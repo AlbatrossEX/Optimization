@@ -6,6 +6,7 @@ into the Graphs folder next to this script:
   methods_convergence.png - best-so-far vs evaluations, coloured by method
   final_vs_radius.png     - median final objective per starting radius, per method
   winner_grid.png         - start x radius small-multiples, each case's winner stair
+  winner_compare.png      - every case overlaid on one axes, coloured by leader
   win_count.png           - share of still-running cases each method leads
 
 Graph types mirror the pre-existing Log/Non_smooth and Log/BQmin_graphing figures.
@@ -54,6 +55,14 @@ def main():
             title="Per-case winner grid (smooth, four methods)\n"
             "rows = starting point, columns = radius; each stair coloured by "
             "the method leading at that evaluation",
+        )
+        gc.winner_overlay_figure(
+            cases,
+            METHODS,
+            str(graph_dir / "winner_compare.png"),
+            title=f"Per-case winner over the evaluation budget "
+            f"({len(cases)} cases, smooth, four methods)\n"
+            "each curve is one starting condition, coloured by the method leading there",
         )
         gc.win_count_figure(
             cases,

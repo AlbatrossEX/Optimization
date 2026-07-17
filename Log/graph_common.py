@@ -7,9 +7,12 @@ curves, the convergence / final-vs-radius / per-case-winner figures — lives he
 so the four scripts stay consistent with each other and with the pre-existing
 graphs (Log/Non_smooth/*, Log/BQmin_graphing/*).
 
-Logs now live in per-run directories Log/Logs/<name>_<timestamp>/ (one directory
-per run of a Running/ experiment); find_run_dir(name) returns the most recent one.
+Logs live in budget-keyed directories Log/Logs/<N> Evalu/<Name>/ (one directory
+per experiment per evaluation budget); find_run_dir(name) returns the most
+recent one (legacy Log/Logs/<name>_<timestamp>/ runs are still found as a
+fallback).
 """
+import itertools
 import os
 import re
 import sys
@@ -60,10 +63,14 @@ STACK_OFFSET_PTS = {
     3: -LINEWIDTH / 2,
 }
 
-# Per-case winner colouring: one colour per method, plus a tie colour. A method
-# holding the same best value as another is split by who REACHED it first; TIE
-# only when the earliest reach is simultaneous (typically the shared start value).
+# Per-case winner colouring: one colour per competitor, plus a tie colour. A
+# competitor holding the same best value as another is split by who REACHED it
+# first; TIE only when the earliest reach is simultaneous (typically the shared
+# start value). METHOD_COLOR races the four methods; GH_COLOR races the two model
+# builders (gh 0 vs gh 1). The winner machinery is category-agnostic: pass
+# whichever base colour/name maps match the `key` it is grouped on.
 METHOD_COLOR = {0: "#000000", 1: "#DC267F", 2: "#FFB000", 3: "#648FFF"}
+GH_COLOR = {0: "#000000", 1: "#648FFF"}
 TIE = -1
 TIE_COLOR = "#9E9E9E"
 TIE_NAME = "tie (reached together)"
@@ -90,8 +97,12 @@ FLOAT_IN_START = re.compile(r"-?\d+\.?\d*")
 
 
 def pick_scale(values, ratio=50.0):
-    """Pick 'log' when the strictly-positive data spans more than `ratio`x, else 'linear'."""
+    """Pick 'log' when the strictly-positive data spans more than `ratio`x, else
+    'linear'. Non-finite values (inf from not-yet-finite evaluations) are ignored."""
     values = np.asarray(values, dtype=float)
+    values = values[np.isfinite(values)]
+    if not values.size:
+        return "linear"
     positive = values[values > 0]
     if positive.size and values.min() > 0 and positive.max() / positive.min() > ratio:
         return "log"
@@ -99,36 +110,72 @@ def pick_scale(values, ratio=50.0):
 
 
 def limits(values, scale, pad=0.05):
-    """Readable axis limits: multiplicative padding in log, additive in linear."""
+    """Readable axis limits from the FINITE data: multiplicative padding in log,
+    additive in linear. Non-finite values are drawn separately as a top bar
+    (see inf_level), so they must not stretch the axis to infinity here."""
     values = np.asarray(values, dtype=float)
+    values = values[np.isfinite(values)]
+    if not values.size:  # nothing finite to frame; a unit window keeps draws valid
+        return 0.0, 1.0
     lo, hi = float(values.min()), float(values.max())
     if scale == "log":
-        lo = min(values[values > 0])
+        lo = float(values[values > 0].min())
         return lo * (1.0 - pad), hi * (1.0 + pad)
     span = hi - lo or abs(hi) or 1.0
     return lo - pad * span, hi + pad * span
+
+
+def inf_level(ylo, yhi, scale):
+    """Where to park non-finite (inf) values so they read as a bar along the top
+    of the axis, just clear of the finite data. Returns (level, top): draw inf
+    at `level` and cap the axis at `top` so the bar sits inside the frame."""
+    if scale == "log":
+        level = yhi * 1.12
+        return level, level * 1.06
+    span = (yhi - ylo) or abs(yhi) or 1.0
+    level = yhi + 0.10 * span
+    return level, yhi + 0.16 * span
+
+
+def draw_inf_marker(ax, level, scale):
+    """Mark the inf level with a faint dashed rule and an 'inf' tick label, so a
+    curve pinned to the top bar is readable as 'not yet finite', not a real value."""
+    ax.axhline(level, color="#9E9E9E", linestyle=":", linewidth=1.0, alpha=0.8, zorder=1)
+    trans = ax.get_yaxis_transform()
+    ax.text(
+        0.004, level, "inf", transform=trans, fontsize=8, color="#9E9E9E",
+        va="center", ha="left",
+        bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.7),
+    )
 
 
 # --- Loading -----------------------------------------------------------------
 
 
 def find_run_dir(name, entry_point=None):
-    """The most recent Log/Logs/<name>_*/ directory, or exit with a hint."""
+    """The most recent log directory for `name`, or exit with a hint."""
     run_dir = latest_run_dir(name)
     if run_dir is None:
         hint = f"Run Running/{entry_point}.py first." if entry_point else ""
-        raise SystemExit(f"No run directory Log/Logs/{name}_*/ found. {hint}".strip())
+        raise SystemExit(
+            f"No run directory 'Log/Logs/<N> Evalu/{name}/' found. {hint}".strip()
+        )
     return run_dir
 
 
 def read_curve(filepath):
-    """(evaluation number, best-so-far objective) for one log, finite points only.
+    """(evaluation number, best-so-far objective) for one log, all points kept.
 
     Evaluations are re-based to this run's first logged evaluation (self.count is
-    a shared counter that is not reset between runs). Non-finite evaluations
-    still cost budget (they keep their evaluation number) but carry no plottable
-    or rankable value, so they are dropped from the best-so-far curve. A run that
+    a shared counter that is not reset between runs). Non-finite evaluations are
+    KEPT: the best-so-far is a running minimum, so they surface only as a leading
+    run of inf before the first finite value, which the figures draw as a bar
+    along the top of the axis (see inf_level) instead of dropping it. A run that
     is never finite cannot be ranked and returns (None, None).
+
+    Radius-change lines (radius,<count>,<shrink|extend>,...) written by the
+    solvers do not match LINE_PATTERN (no leading evaluation number followed by a
+    coordinate vector), so they are skipped here.
     """
     evals, objectives = [], []
     with open(filepath, "r") as f:
@@ -138,16 +185,15 @@ def read_curve(filepath):
                 continue
             evals.append(int(match.group(1)))
             objectives.append(float(match.group(3)))  # float() parses inf/nan
+
     if not evals:
         return None, None
 
     evals = np.array(evals)
     evals = evals - evals[0] + 1
     objectives = np.array(objectives, dtype=float)
-    finite = np.isfinite(objectives)
-    if not finite.any():
-        return None, None
-    evals, objectives = evals[finite], objectives[finite]
+    if not np.isfinite(objectives).any():
+        return None, None  # never finite: nothing to rank or plot
     return evals, np.minimum.accumulate(objectives)
 
 
@@ -184,29 +230,38 @@ def load_runs(run_dir):
 
 def convergence_figure(runs, key, styles, names, title, outfile):
     """Best-so-far vs evaluations for every run, coloured by runs[i][key]
-    (key is 'method' or 'gh')."""
+    (key is 'method' or 'gh'). A run's leading not-yet-finite (inf) evaluations
+    are drawn as a bar along the top of the axis rather than dropped."""
     fig, ax = plt.subplots(figsize=(10, 6))
+
+    all_evals = np.concatenate([r["evals"] for r in runs])
+    all_best = np.concatenate([r["best"] for r in runs])
+    xscale, yscale = pick_scale(all_evals), pick_scale(all_best)
+    ylo, yhi = limits(all_best, yscale)
+    has_inf = not np.isfinite(all_best).all()
+    level, top = inf_level(ylo, yhi, yscale) if has_inf else (yhi, yhi)
+
     for run in runs:
         style = styles.get(run[key], dict(color="#999999", linewidth=LINEWIDTH))
         stack = mtransforms.ScaledTranslation(
             0.0, STACK_OFFSET_PTS.get(run[key], 0.0) / 72.0, fig.dpi_scale_trans
         )
+        best = np.where(np.isfinite(run["best"]), run["best"], level)
         ax.step(
             run["evals"],
-            run["best"],
+            best,
             where="post",
             alpha=0.85,
             transform=ax.transData + stack,
             **style,
         )
 
-    all_evals = np.concatenate([r["evals"] for r in runs])
-    all_best = np.concatenate([r["best"] for r in runs])
-    xscale, yscale = pick_scale(all_evals), pick_scale(all_best)
     ax.set_xscale(xscale)
     ax.set_yscale(yscale)
     ax.set_xlim(*limits(all_evals, xscale))
-    ax.set_ylim(*limits(all_best, yscale))
+    ax.set_ylim(ylo, top)
+    if has_inf:
+        draw_inf_marker(ax, level, yscale)
 
     ax.set_xlabel("Function evaluations")
     ax.set_ylabel("Best objective so far")
@@ -273,45 +328,78 @@ def _best_at(run, grid):
     return run["best"][idx]
 
 
-def group_cases(runs, methods):
-    """(start, radius) -> {method: run}, keeping only cases raced by every method."""
-    cases = {}
+def group_cases(runs, categories, key="method"):
+    """Group runs into per-case races over `categories` (values of run[`key`]).
+
+    A case is one starting condition (same start and radius). The result maps a
+    case id -> {category: run}, keeping only starting conditions raced by every
+    category. `key` selects the competitor field: "method" races the four
+    solvers, "gh" races the two model builders.
+
+    When a category has several runs for the same starting condition — e.g. the
+    random +-1 model drawn twice — every combination becomes its own race
+    (cartesian over the duplicates) so no draw is dropped; those cases carry a
+    draw index in their id. The common single-run-per-category case keeps the
+    plain (start, radius) id that winner_grid_figure indexes on.
+    """
+    categories = tuple(categories)
+    buckets = {}  # (start, radius) -> {category: [runs]}
     for run in runs:
-        cases.setdefault((run["start"], run["radius"]), {})[run["method"]] = run
-    complete = {k: v for k, v in cases.items() if all(m in v for m in methods)}
-    if len(complete) < len(cases):
-        print(f"note: {len(cases) - len(complete)} case(s) not raced by all "
-              f"{len(methods)} methods; excluded from winner figures.")
+        bucket = buckets.setdefault((run["start"], run["radius"]), {})
+        bucket.setdefault(run[key], []).append(run)
+
+    complete = {}
+    dropped = 0
+    for (start, radius), bucket in buckets.items():
+        if not all(c in bucket for c in categories):
+            dropped += 1
+            continue
+        combos = list(itertools.product(*(bucket[c] for c in categories)))
+        for i, combo in enumerate(combos):
+            case_runs = dict(zip(categories, combo))
+            case_id = (start, radius) if len(combos) == 1 else (start, radius, i)
+            complete[case_id] = case_runs
+    if dropped:
+        print(f"note: {dropped} case(s) not raced by all {len(categories)} "
+              f"{key}s; excluded from winner figures.")
     return complete
 
 
-def case_winners(case_runs, methods):
+def _first_finite_eval(run):
+    """The (re-based) evaluation at which this run's best-so-far first becomes
+    finite. best is a running minimum, so it is finite from here on."""
+    finite = np.isfinite(run["best"])
+    return int(run["evals"][int(np.argmax(finite))])
+
+
+def case_winners(case_runs, categories):
     """(grid, best-of-N, winner) per evaluation for one case.
 
-    winner[k] is the method leading at evaluation k; methods holding an equal
-    best value are split by who reached it first, TIE only on a simultaneous
-    reach. The race starts once every method has a finite best-so-far.
+    winner[k] is the category (method or gh) leading at evaluation k; categories
+    holding an equal best value are split by who reached it first, TIE only on a
+    simultaneous reach. The race starts once every category has a finite
+    best-so-far, so the not-yet-finite (inf) prefixes never decide a winner.
     """
-    methods = tuple(methods)
-    start = max(int(case_runs[m]["evals"][0]) for m in methods)
-    last = max(int(case_runs[m]["evals"][-1]) for m in methods)
+    categories = tuple(categories)
+    start = max(_first_finite_eval(case_runs[c]) for c in categories)
+    last = max(int(case_runs[c]["evals"][-1]) for c in categories)
     if start > last:
         empty = np.array([], dtype=int)
         return empty, np.array([]), empty
     grid = np.arange(start, last + 1)
-    curves = np.vstack([_best_at(case_runs[m], grid) for m in methods])
+    curves = np.vstack([_best_at(case_runs[c], grid) for c in categories])
     best = curves.min(axis=0)
-    # reach[i][k] = first grid index where method i attained best[k]. Best-so-far
-    # is non-increasing, so -curves is sorted and searchsorted vectorises the
-    # lookup; a non-leader cannot have reached the min yet, so argmin finds strict
-    # leaders too.
+    # reach[i][k] = first grid index where category i attained best[k].
+    # Best-so-far is non-increasing, so -curves is sorted and searchsorted
+    # vectorises the lookup; a non-leader cannot have reached the min yet, so
+    # argmin finds strict leaders too.
     reach = np.vstack(
-        [np.searchsorted(-curves[i], -best, side="left") for i in range(len(methods))]
+        [np.searchsorted(-curves[i], -best, side="left") for i in range(len(categories))]
     )
     first = reach.min(axis=0)
     winner = np.where(
         (reach == first).sum(axis=0) == 1,
-        np.array(methods)[reach.argmin(axis=0)],
+        np.array(categories)[reach.argmin(axis=0)],
         TIE,
     )
     return grid, best, winner
@@ -330,18 +418,18 @@ def _winner_segments(grid, best, winner):
     return segments, np.repeat(ws, 2)[: len(segments)]
 
 
-def _colors_for(methods):
-    colors = {m: METHOD_COLOR[m] for m in methods}
+def _colors_for(categories, base=METHOD_COLOR):
+    colors = {c: base[c] for c in categories}
     colors[TIE] = TIE_COLOR
     return colors
 
 
-def _categories(methods):
-    return (*methods, TIE)
+def _categories(categories):
+    return (*categories, TIE)
 
 
-def _names_for(methods):
-    names = {m: METHOD_NAMES[m] for m in methods}
+def _names_for(categories, base=METHOD_NAMES):
+    names = {c: base[c] for c in categories}
     names[TIE] = TIE_NAME
     return names
 
@@ -350,25 +438,34 @@ def _grid_figsize(nrows, ncols, cell_w=2.4, cell_h=2.0, max_w=40.0, max_h=34.0):
     return max(min(cell_w * ncols, max_w), 4.0), max(min(cell_h * nrows, max_h), 3.0)
 
 
-def _case_results(cases, methods):
+def _case_results(cases, categories):
     results = []
     for key, case_runs in cases.items():
-        grid, best, winner = case_winners(case_runs, methods)
+        grid, best, winner = case_winners(case_runs, categories)
         if grid.size:
             results.append((key, grid, best, winner))
     return results
 
 
-def winner_overlay_figure(cases, methods, outfile, title):
+def winner_overlay_figure(
+    cases, categories, outfile, title,
+    colors_base=METHOD_COLOR, names_base=METHOD_NAMES, ylabel=None,
+):
     """Every case overlaid on ONE axes: each drawn as the best-of-N stair,
-    coloured at each evaluation by the method leading there, so exactly one
-    colour shows at any evaluation. (The single-axes counterpart to
-    winner_grid_figure's small multiples.)"""
-    results = _case_results(cases, methods)
+    coloured at each evaluation by the category (method or gh) leading there, so
+    exactly one colour shows at any evaluation. (The single-axes counterpart to
+    winner_grid_figure's small multiples.)
+
+    colors_base/names_base pick the palette and legend labels for the competitor
+    kind: the method maps by default, GH_COLOR/GH_NAMES for a model-builder race.
+    """
+    results = _case_results(cases, categories)
     if not results:
         print(f"skipped {os.path.basename(outfile)}: no rankable case")
         return
-    colors, categories, names = _colors_for(methods), _categories(methods), _names_for(methods)
+    colors = _colors_for(categories, colors_base)
+    legend = _categories(categories)
+    names = _names_for(categories, names_base)
 
     fig, ax = plt.subplots(figsize=(11, 6.5))
     segments, seg_colors, grids, bests = [], [], [], []
@@ -389,9 +486,9 @@ def winner_overlay_figure(cases, methods, outfile, title):
     ax.set_xlim(*limits(all_evals, xscale))
     ax.set_ylim(*limits(all_best, yscale))
     ax.set_xlabel("Function evaluations")
-    ax.set_ylabel("Best objective so far (best of the methods)")
+    ax.set_ylabel(ylabel or "Best objective so far (best of the competitors)")
     ax.set_title(title)
-    handles = [Line2D([], [], color=colors[c], lw=2, label=names[c]) for c in categories]
+    handles = [Line2D([], [], color=colors[c], lw=2, label=names[c]) for c in legend]
     ax.legend(handles=handles, loc="upper right")
 
     fig.tight_layout()

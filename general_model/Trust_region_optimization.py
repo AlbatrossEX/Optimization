@@ -14,13 +14,13 @@ Array1D = NDArray[np.floating]
 _LIVE_LOG = str(Path(__file__).resolve().parents[1] / "Log" / "Logs" / "New.txt")
 
 # Trust-radius floor: once the radius collapses below this the model box is
-# numerically a point and no step can make progress, so the solver has stalled
-# and stops. This is a safety/convergence stop, NOT a competing budget: the
-# stopping condition is the function-evaluation budget (max_evals). The floor
-# only matters for a degenerate path — method 0 with the random +-1 model
-# (gh_type 1) evaluates nothing inside GH, so an iteration whose bqmin step is
-# rejected with a collapsed radius would otherwise loop forever without ever
-# spending (and thus counting down) an evaluation.
+# numerically a point and no step can make progress, so the solver has stalled.
+# Stalling is NOT an early stop for the run: the stopping condition is the
+# function-evaluation budget (max_evals), and every log must carry at least
+# that many evaluations so runs stay comparable point-for-point. A stalled
+# solver therefore leaves its iteration loop (which could otherwise shrink
+# forever without spending an evaluation) and spends whatever remains of the
+# budget at its final iterate via _spend_remaining.
 _DELTA_MIN = 1e-12
 
 
@@ -133,6 +133,29 @@ class TR_function:
     def GH(self, x: Array1D, radius: float, gh_type: int = 0) -> Tuple[Array1D, Array1D]:
         raise NotImplementedError
 
+    def _resize_radius(self, delta: float, factor: float, action: str) -> float:
+        """Scale the trust radius and record the change in the log.
+
+        The line reads radius,<evaluation count>,<shrink|extend>,<old>,<new>, —
+        it starts with 'radius' so the graph parsers' evaluation-line pattern
+        (which requires a leading evaluation number) skips it, while the count
+        ties the change to the log's evaluation axis for later analysis.
+        """
+        resized = delta * factor
+        self._logger.write(f"radius,{self.count},{action},{delta:g},{resized:g},\n")
+        return resized
+
+    def _spend_remaining(self, x: Array1D, start_count: int, budget: int) -> None:
+        """Spend whatever is left of the evaluation budget at the final iterate.
+
+        A stalled solver (collapsed trust radius) leaves its iteration loop
+        before the budget is used up; the budget is the stopping condition and
+        each log must contain at least `budget` evaluations, so the remainder
+        is spent (and logged) here at the point the solver stalled on.
+        """
+        while self.count - start_count < budget:
+            self.output(x)
+
     # --- Solvers -------------------------------------------------------------
     # Every solver stops on a FUNCTION-EVALUATION budget, not an iteration count:
     # `max_evals` is how many times the objective may be evaluated. self.count is
@@ -151,8 +174,8 @@ class TR_function:
         extend: float,
         radius: float,
         p: float,
-        max_evals: int = 1000,
-        gh_type: int = 0,
+        max_evals: int,
+        gh_type: int,
     ) -> Array1D:
         x = np.array(x_0, dtype=float, copy=True)
         delta = float(radius)
@@ -162,32 +185,31 @@ class TR_function:
         fx = float(self.output(x))
 
         while self.count - start_count < budget:
-            if delta < _DELTA_MIN:
-                break  # trust region collapsed; the solver has stalled
             g, h = self.GH(x, delta, gh_type)
             bound = delta * np.ones_like(x)
             step, _ = bqmin(h, g, -bound, bound)
             step = np.asarray(step, dtype=float).reshape(x.shape)
 
-            predicted_reduction = float(-(g @ step + 0.5 * step @ h @ step))
-            if predicted_reduction <= 0:
-                delta *= shrink
-                continue
-
             f_trial = float(self.output(x + step))
             actual_reduction = fx - f_trial
-            if not np.isfinite(actual_reduction):
-                delta *= shrink
+
+            if not np.isfinite(fx) and np.isfinite(f_trial):
+                x = x + step
+                fx = f_trial
                 continue
+
+            if not (np.isfinite(fx) or np.isfinite(f_trial)):
+                delta = self._resize_radius(delta, extend, "extend")
+                continue
+
             roll = actual_reduction / (theta * (np.linalg.norm(step, 2) ** (1.0 + p)))
 
             if roll >= miu:
                 x = x + step
                 fx = f_trial
-                if roll > 0.75:
-                    delta *= extend
+                delta = self._resize_radius(delta, extend, "extend")
             else:
-                delta *= shrink
+                delta = self._resize_radius(delta, shrink, "shrink")
 
         return x
 
@@ -228,7 +250,7 @@ class TR_function:
 
         while self.count - start_count < budget:
             if delta < _DELTA_MIN:
-                break  # trust region collapsed; the solver has stalled
+                break  # trust region collapsed; the remaining budget is spent below
             offsets, _ = algorithm_6_4(
                 Y=np.zeros_like(x.reshape(1, -1)),
                 Delta=delta,
@@ -241,7 +263,7 @@ class TR_function:
                 [pt for pt in poised if np.linalg.norm(pt - x, 2) > 0.0]
             )
             if candidates.shape[0] == 0:
-                delta *= shrink
+                delta = self._resize_radius(delta, shrink, "shrink")
                 continue
 
             f_candidates = self._evaluate_poised(candidates)
@@ -250,20 +272,26 @@ class TR_function:
             step = candidates[best_idx, :] - x
 
             actual_reduction = fx - f_trial
-            step_norm = float(np.linalg.norm(step, 2))
-            if not np.isfinite(actual_reduction) or step_norm == 0.0:
-                delta *= shrink
+
+            if not np.isfinite(fx) and np.isfinite(f_trial):
+                x = x + step
+                fx = f_trial
                 continue
-            roll = actual_reduction / (theta * step_norm ** (1.0 + p))
+
+            if not (np.isfinite(fx) or np.isfinite(f_trial)):
+                delta = self._resize_radius(delta, extend, "extend")
+                continue
+
+            roll = actual_reduction / (theta * (np.linalg.norm(step, 2) ** (1.0 + p)))
 
             if roll >= miu:
                 x = x + step
                 fx = f_trial
-                if roll > 0.75:
-                    delta *= extend
+                delta = self._resize_radius(delta, extend, "extend")
             else:
-                delta *= shrink
+                delta = self._resize_radius(delta, shrink, "shrink")
 
+        self._spend_remaining(x, start_count, budget)
         return x
 
     def trust_region_optimization_2(
@@ -288,7 +316,7 @@ class TR_function:
 
         while self.count - start_count < budget:
             if delta < _DELTA_MIN:
-                break  # trust region collapsed; the solver has stalled
+                break  # trust region collapsed; the remaining budget is spent below
             g, h = self.GH(x, delta, gh_type)
             bound = delta * np.ones_like(x)
             step, _ = bqmin(h, g, -bound, bound)
@@ -305,21 +333,31 @@ class TR_function:
                 step = self.poised[best_idx, :] - x
 
             actual_reduction = fx - f_trial
+
+            if not np.isfinite(fx) and np.isfinite(f_trial):
+                x = x + step
+                fx = f_trial
+                continue
+
+            if not (np.isfinite(fx) or np.isfinite(f_trial)):
+                delta = self._resize_radius(delta, extend, "extend")
+                continue
+
             step_norm = float(np.linalg.norm(step, 2))
             # step_norm can be 0 when the best interpolation point is x itself
-            if not np.isfinite(actual_reduction) or step_norm == 0.0:
-                delta *= shrink
+            if step_norm == 0.0:
+                delta = self._resize_radius(delta, shrink, "shrink")
                 continue
-            roll = actual_reduction / (theta * step_norm ** (1.0 + p))
+            roll = actual_reduction / (theta * (step_norm ** (1.0 + p)))
 
             if roll >= miu:
                 x = x + step
                 fx = f_trial
-                if roll > 0.75:
-                    delta *= extend
+                delta = self._resize_radius(delta, extend, "extend")
             else:
-                delta *= shrink
+                delta = self._resize_radius(delta, shrink, "shrink")
 
+        self._spend_remaining(x, start_count, budget)
         return x
 
     def trust_region_optimization_3(
@@ -361,7 +399,7 @@ class TR_function:
 
         while self.count - start_count < budget:
             if delta < _DELTA_MIN:
-                break  # trust region collapsed; the solver has stalled
+                break  # trust region collapsed; the remaining budget is spent below
             # Geometry only: fx is already known, so unlike GH the set is built
             # without spending an evaluation on the centre point.
             offsets, _ = algorithm_6_4(
@@ -380,22 +418,36 @@ class TR_function:
                     continue
                 f_trial = float(self.output(point))
                 actual_reduction = fx - f_trial
-                if not np.isfinite(actual_reduction):
-                    continue
-                roll = actual_reduction / (theta * step_norm ** (1.0 + p))
+
+                if not np.isfinite(fx) and np.isfinite(f_trial):
+                    # switch immediately: the remaining points are never evaluated
+                    x = np.array(point, dtype=float, copy=True)
+                    fx = f_trial
+                    moved = True
+                    break
+
+                if not (np.isfinite(fx) or np.isfinite(f_trial)):
+                    continue  # nothing rankable here; the sweep outcome decides
+
+                roll = actual_reduction / (theta * (step_norm ** (1.0 + p)))
 
                 if roll >= miu:
                     # switch immediately: the remaining points are never evaluated
                     x = np.array(point, dtype=float, copy=True)
                     fx = f_trial
-                    if roll > 0.75:
-                        delta *= extend
+                    delta = self._resize_radius(delta, extend, "extend")
                     moved = True
                     break
 
             if not moved:
-                delta *= shrink
+                if not np.isfinite(fx):
+                    # every point in reach was non-finite too: method 0's rule
+                    # for that case is to extend, growing the region to escape
+                    delta = self._resize_radius(delta, extend, "extend")
+                else:
+                    delta = self._resize_radius(delta, shrink, "shrink")
 
+        self._spend_remaining(x, start_count, budget)
         return x
 
     def trust_region_optimization_function(

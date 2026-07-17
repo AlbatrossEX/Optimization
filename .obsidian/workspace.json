@@ -8,19 +8,33 @@
         "type": "tabs",
         "children": [
           {
-            "id": "b1372d03b62eaf57",
+            "id": "1a25d81d9bb097c5",
             "type": "leaf",
             "state": {
               "type": "pdf",
               "state": {
-                "file": "Research_paper/Argonne Optimization/BOOKs/22m1524072.pdf"
+                "file": "Research_paper/Argonne Optimization/BOOKs/Derivative-Free and Blackbox Optimization.pdf"
               },
               "icon": "lucide-file-text",
-              "title": "22m1524072"
+              "title": "Derivative-Free and Blackbox Optimization"
             }
           },
           {
-            "id": "1a25d81d9bb097c5",
+            "id": "07f976d3c2c9e403",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "COMPREHENSIVE_RESEARCH_REPORT"
+            }
+          },
+          {
+            "id": "6f4425ea4212f270",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -196,25 +210,26 @@
       "bases:新建数据库": false
     }
   },
-  "active": "1a25d81d9bb097c5",
+  "active": "07f976d3c2c9e403",
   "lastOpenFiles": [
+    "run_all.py",
+    "requirements.txt",
+    "requirements.txt.tmp.19404.07e6d5521443",
+    "Research_paper/smoothed_dfo_trns_paper.md",
+    "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+    "Research_paper/Argonne Optimization/BOOKs/Derivative-Free and Blackbox Optimization.pdf",
+    "Research_paper/Argonne Optimization/BOOKs/Storm.pdf",
+    "Research_paper/Argonne Optimization/BOOKs/Unconfirmed 351260.crdownload",
+    "Research_paper/Argonne Optimization/BOOKs/Wild-GlobalConvergenceRadial-2013.pdf",
+    "Log/Logs/200 Evalu/Smooth_four_methods/S012_start-1-0.5--0.3_radius1_p1_method0_gh0.txt",
+    "Log/Logs/200 Evalu/Smooth_four_methods/S014_start-1-0.5--0.3_radius1_p1_method2_gh0.txt",
+    "Log/Logs/200 Evalu/Smooth_four_methods/S015_start-1-0.5--0.3_radius1_p1_method3_gh0.txt",
+    "Log/Logs/200 Evalu/Smooth_four_methods/case_distribution.txt",
     "Research_paper/Argonne Optimization/Numpy.md",
     "Research_paper/Argonne Optimization/DF-Optimization Notes.md",
-    "Research_paper/smoothed_dfo_trns_paper.md",
-    "Research_paper/Argonne Optimization/BOOKs/Trust-Region Methods for the DFO of Nonsmooth BBox (2026-01-11 23-56-44).pdf",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G014_start0.64-1.38-0.26_radius2_p1_method0_gh0.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G013_start0.64-1.38-0.26_radius1_p1_method0_gh0.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G009_start-2.9-1.88-2.48_radius2_p1_method0_gh0.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G008_start-2.9-1.88-2.48_radius1_p1_method0_gh0.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G005_start-2.9-1.88-2.48_radius0.1_p1_method0_gh0.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G006_start-2.9-1.88-2.48_radius0.3_p1_method0_gh0.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/G010_start0.64-1.38-0.26_radius0.1_p1_method0_gh0.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/New_53852.txt",
-    "Log/Logs/nonsmooth_gh_compare_20260716-233811/New_62304.txt",
     "Log/Graphs/convergence_nonsmooth_op.png",
     "Log/BQmin_graphing/Graphs/win_count_smooth.png",
     "Log/BQmin_graphing/Graphs/winner_grid_smooth.png",
-    "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
     "Log/Nonsmooth_gh_compare/Graphs/final_vs_radius.png",
     "Log/Nonsmooth_gh_compare/Graphs/gh_convergence.png",
     "Log/Nonsmooth_method_compare/Graphs/win_count.png",

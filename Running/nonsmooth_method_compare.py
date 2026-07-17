@@ -14,8 +14,9 @@ trust-region behaviour is most interesting: 90% in [0.01, 1], 10% in (1, 3] (see
 effort_radii). The stopping condition is a function-evaluation budget
 (EVAL_BUDGET).
 
-Logs land in their own Log/Logs/nonsmooth_method_compare_<timestamp>/ directory
-and are never cleared. Graph them with Log/Nonsmooth_method_compare/graph.py.
+Logs land in Log/Logs/<EVAL_BUDGET> Evalu/Nonsmooth_method_compare/ — found or
+created on the way in, so re-runs at the same budget share the directory and
+replace same-named logs. Graph them with Log/Nonsmooth_method_compare/graph.py.
 """
 import sys
 from pathlib import Path
