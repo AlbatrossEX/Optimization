@@ -67,6 +67,14 @@ def main():
         )
     else:
         print("no complete gh 0 vs gh 1 cases; skipped winner_compare.png.")
+    
+    gc.win_count_figure(
+            cases,
+            GH_TYPES,
+            str(graph_dir / "win_count.png"),
+            title="Which method leads, per evaluation budget\n"
+            "proportion of still-running cases whose best-so-far is lowest",
+        )
 
 
 if __name__ == "__main__":

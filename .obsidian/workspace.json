@@ -25,30 +25,28 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+                "file": "Research_paper/BQMIN vs Interpolation Minimum Complete Research Report.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "COMPREHENSIVE_RESEARCH_REPORT"
+              "title": "BQMIN vs Interpolation Minimum Complete Research Report"
             }
           },
           {
             "id": "6f4425ea4212f270",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "pdf",
               "state": {
-                "file": "Research_paper/smoothed_dfo_trns_paper.md",
-                "mode": "source",
-                "source": false
+                "file": "Research_paper/Argonne Optimization/BOOKs/Trust-Region Methods for the DFO of Nonsmooth BBox (2026-01-11 23-56-44).pdf"
               },
-              "icon": "lucide-file",
-              "title": "smoothed_dfo_trns_paper"
+              "icon": "lucide-file-text",
+              "title": "Trust-Region Methods for the DFO of Nonsmooth BBox (2026-01-11 23-56-44)"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -210,21 +208,25 @@
       "bases:新建数据库": false
     }
   },
-  "active": "07f976d3c2c9e403",
+  "active": "6f4425ea4212f270",
   "lastOpenFiles": [
-    "run_all.py",
-    "requirements.txt",
-    "requirements.txt.tmp.19404.07e6d5521443",
-    "Research_paper/smoothed_dfo_trns_paper.md",
-    "Research_paper/BQmiin_research/COMPREHENSIVE_RESEARCH_REPORT.md",
+    "general_model/Trust_region_optimization.py.tmp.65400.b3bb286fb379",
+    "Research_paper/Trust-Region Methods for the Derivative-Free Optimization of Non-smooth Black-Box Functions via Differentiable Surrogate Modeling.md",
     "Research_paper/Argonne Optimization/BOOKs/Derivative-Free and Blackbox Optimization.pdf",
-    "Research_paper/Argonne Optimization/BOOKs/Storm.pdf",
-    "Research_paper/Argonne Optimization/BOOKs/Unconfirmed 351260.crdownload",
-    "Research_paper/Argonne Optimization/BOOKs/Wild-GlobalConvergenceRadial-2013.pdf",
-    "Log/Logs/200 Evalu/Smooth_four_methods/S012_start-1-0.5--0.3_radius1_p1_method0_gh0.txt",
-    "Log/Logs/200 Evalu/Smooth_four_methods/S014_start-1-0.5--0.3_radius1_p1_method2_gh0.txt",
-    "Log/Logs/200 Evalu/Smooth_four_methods/S015_start-1-0.5--0.3_radius1_p1_method3_gh0.txt",
-    "Log/Logs/200 Evalu/Smooth_four_methods/case_distribution.txt",
+    "Research_paper/Argonne Optimization/BOOKs/Introduction to derivative-free optimization by Andrew R. Conn, Katya Scheinberg, Luis N. Vicente (z-lib.org).pdf",
+    "Research_paper/Argonne Optimization/BOOKs/Trust-Region Methods for the DFO of Nonsmooth BBox (2026-01-11 23-56-44).pdf",
+    "Research_paper/Argonne Optimization/BOOKs/Stocastic optimization.pdf",
+    "Research_paper/BQMIN vs Interpolation Minimum Complete Research Report.md",
+    "Log/Nonsmooth_gh_compare/Graphs/win_count.png",
+    "Log/Logs/8000 Evalu/Nonsmooth_method_compare/New_3600.txt",
+    "Log/Logs/8000 Evalu/Nonsmooth_method_compare/New_3603.txt",
+    "Log/Logs/8000 Evalu/Nonsmooth_method_compare/New_3588.txt",
+    "Log/Logs/8000 Evalu/Nonsmooth_method_compare/New_3574.txt",
+    "Log/Logs/8000 Evalu/Nonsmooth_method_compare/New_3572.txt",
+    "Log/Logs/8000 Evalu/Nonsmooth_method_compare/New_3569.txt",
+    "Log/Nonsmooth_method_compare/Graphs/winner_compare.png",
+    "Log/Smooth_four_methods/Graphs/winner_compare.png",
+    "Log/Nonsmooth_gh_compare/Graphs/winner_compare.png",
     "Research_paper/Argonne Optimization/Numpy.md",
     "Research_paper/Argonne Optimization/DF-Optimization Notes.md",
     "Log/Graphs/convergence_nonsmooth_op.png",
@@ -233,10 +235,6 @@
     "Log/Nonsmooth_gh_compare/Graphs/final_vs_radius.png",
     "Log/Nonsmooth_gh_compare/Graphs/gh_convergence.png",
     "Log/Nonsmooth_method_compare/Graphs/win_count.png",
-    "Log/Nonsmooth_method_compare/Graphs/winner_grid.png",
-    "Log/Nonsmooth_method_compare/Graphs/final_vs_radius.png",
-    "Log/Nonsmooth_method_compare/Graphs/methods_convergence.png",
-    "Log/Smooth_four_methods/Graphs/win_count.png",
     "Research_paper/COMPREHENSIVE_RESEARCH_REPORT.md",
     "Research_paper/EXECUTIVE_SUMMARY_WITH_TOP10.md",
     "Research_paper/RESEARCH_SUMMARY.md",

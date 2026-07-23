@@ -133,6 +133,30 @@ class TR_function:
     def GH(self, x: Array1D, radius: float, gh_type: int = 0) -> Tuple[Array1D, Array1D]:
         raise NotImplementedError
 
+    def _predicted_reduction(
+        self,
+        step: Array1D,
+        g: Optional[Array1D],
+        h: Optional[Array1D],
+        theta: float,
+        p: float,
+    ) -> float:
+        """Denominator of the trust-region ratio rho = actual_reduction / predicted.
+
+        This is the ONE place the smooth and nonsmooth trust-region algorithms
+        diverge, so — like GH — it is overridden per function class:
+
+          * SmoothFunction uses the MBTR predicted reduction (Algorithm 11.1):
+            the model's own promised decrease, f~(x) - f~(x+s) = -(g.s + 1/2 s.H.s).
+          * NonSmoothFunction uses the Basic DFO-TRNS forcing term theta*||s||^(1+p),
+            which its convergence analysis needs in place of the model reduction.
+
+        g and h are the model returned by GH; they are None for the model-free
+        interpolation-point solvers (methods 1 and 3), which fit no model and so
+        have no model reduction to offer.
+        """
+        raise NotImplementedError
+
     def _resize_radius(self, delta: float, factor: float, action: str) -> float:
         """Scale the trust radius and record the change in the log.
 
@@ -199,10 +223,35 @@ class TR_function:
                 continue
 
             if not (np.isfinite(fx) or np.isfinite(f_trial)):
+                # A quadratic fit through non-finite values gives bqmin nothing
+                # to minimize (its step stays at 0), so the model step alone can
+                # never leave a non-finite region however far the radius grows.
+                # The interpolation set is the way out: once it contains a
+                # finite point, move to the best one — the escape the extend
+                # rule is growing the region toward. gh_type 1 builds no
+                # interpolation set; its finite random model already produces a
+                # real step, so extending is enough there.
+                if gh_type == 0:
+                    best_idx = int(np.argmin(self.f_poised))
+                    f_best = self.f_poised[best_idx].item()
+                    if np.isfinite(f_best):
+                        x = self.poised[best_idx, :].copy()
+                        fx = f_best
+                        continue
                 delta = self._resize_radius(delta, extend, "extend")
                 continue
 
-            roll = actual_reduction / (theta * (np.linalg.norm(step, 2) ** (1.0 + p)))
+            # The ratio denominator is the only smooth/nonsmooth difference:
+            # SmoothFunction returns the MBTR model reduction, NonSmoothFunction
+            # the DFO-TRNS forcing term (see _predicted_reduction).
+            predicted = self._predicted_reduction(step, g, h, theta, p)
+            if predicted <= 0:
+                # The model promises no decrease (or the step collapsed to a
+                # point): there is nothing to trust, so treat it as a failed
+                # iteration and shrink the trust region.
+                delta = self._resize_radius(delta, shrink, "shrink")
+                continue
+            roll = actual_reduction / predicted
 
             if roll >= miu:
                 x = x + step
@@ -282,7 +331,14 @@ class TR_function:
                 delta = self._resize_radius(delta, extend, "extend")
                 continue
 
-            roll = actual_reduction / (theta * (np.linalg.norm(step, 2) ** (1.0 + p)))
+            # Model-free strategy: with no fitted model there is no model
+            # reduction, so g and h are None and both function classes fall back
+            # to the DFO-TRNS forcing term inside _predicted_reduction.
+            predicted = self._predicted_reduction(step, None, None, theta, p)
+            if predicted <= 0:
+                delta = self._resize_radius(delta, shrink, "shrink")
+                continue
+            roll = actual_reduction / predicted
 
             if roll >= miu:
                 x = x + step
@@ -343,12 +399,17 @@ class TR_function:
                 delta = self._resize_radius(delta, extend, "extend")
                 continue
 
-            step_norm = float(np.linalg.norm(step, 2))
-            # step_norm can be 0 when the best interpolation point is x itself
-            if step_norm == 0.0:
+            # This solver fits a model (via GH), so pass g and h: the smooth case
+            # scores the chosen step against the model reduction, the nonsmooth
+            # case against the forcing term (see _predicted_reduction).
+            predicted = self._predicted_reduction(step, g, h, theta, p)
+            if predicted <= 0:
+                # Either the step collapsed to a point (the best interpolation
+                # point is x itself) or, in the smooth case, the model promises
+                # no decrease along the chosen step: treat it as a failure.
                 delta = self._resize_radius(delta, shrink, "shrink")
                 continue
-            roll = actual_reduction / (theta * (step_norm ** (1.0 + p)))
+            roll = actual_reduction / predicted
 
             if roll >= miu:
                 x = x + step
@@ -410,7 +471,7 @@ class TR_function:
             poised = offsets + x
 
             moved = False
-            for point in poised:
+            for i, point in enumerate(poised):
                 step = point - x
                 step_norm = float(np.linalg.norm(step, 2))
                 # the centre itself sits in the poised set; its value is fx
@@ -429,13 +490,19 @@ class TR_function:
                 if not (np.isfinite(fx) or np.isfinite(f_trial)):
                     continue  # nothing rankable here; the sweep outcome decides
 
-                roll = actual_reduction / (theta * (step_norm ** (1.0 + p)))
+                # Model-free strategy (no fitted model): g and h are None, so
+                # both function classes use the DFO-TRNS forcing term. step_norm
+                # is already > 0 here, so the forcing term is strictly positive.
+                predicted = self._predicted_reduction(step, None, None, theta, p)
+                if predicted <= 0:
+                    continue  # this poised point offers no usable decrease
+                roll = actual_reduction / predicted
 
                 if roll >= miu:
                     # switch immediately: the remaining points are never evaluated
                     x = np.array(point, dtype=float, copy=True)
                     fx = f_trial
-                    delta = self._resize_radius(delta, extend, "extend")
+                    delta = self._resize_radius(delta, 1+(extend-1)/21*i, "extend")
                     moved = True
                     break
 
@@ -443,9 +510,9 @@ class TR_function:
                 if not np.isfinite(fx):
                     # every point in reach was non-finite too: method 0's rule
                     # for that case is to extend, growing the region to escape
-                    delta = self._resize_radius(delta, extend, "extend")
+                    delta = self._resize_radius(delta, 1+(extend-1)/21*i, "extend")
                 else:
-                    delta = self._resize_radius(delta, shrink, "shrink")
+                    delta = self._resize_radius(delta, 1+(shrink-1)/21*i, "shrink")
 
         self._spend_remaining(x, start_count, budget)
         return x

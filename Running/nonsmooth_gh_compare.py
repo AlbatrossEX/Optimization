@@ -46,8 +46,10 @@ CONSTANTS = (
 
 PROBLEM = {"kind": "nonsmooth", "m": 15, "nprob": 8}
 
-EVAL_BUDGET = 10000  # function evaluations per run (the stopping condition)
-STARTS = random_starts(count=8, dim=3, box=3.0, seed=0)
+EVAL_BUDGET = 8000  # function evaluations per run (the stopping condition)
+# problem=PROBLEM rejects starts where the objective is inf (the nondiff Bard
+# function is inf wherever x[1] <= 0 and x[2] <= 0), so every run starts finite.
+STARTS = random_starts(count=8, dim=3, box=3.0, seed=0, problem=PROBLEM)
 # 90% of the radii in [0.01, 1], 10% in (1, 3].
 RADII = effort_radii(count=20, low=0.01, mid=1.0, high=3.0, low_frac=0.9)
 

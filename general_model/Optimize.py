@@ -14,9 +14,15 @@ Logs: organized by evaluation budget first, then by experiment. A run writes
 into Log/Logs/<evaluations> Evalu/<Name>/, found or created on the way in, so
 the same execution code run at the same budget always lands in the same
 directory (same-named logs from an earlier run are replaced).
+
+Resume: a suite that is cut short (closed terminal, sleep, crash) continues
+from where it left off when relaunched — cases whose final log already exists
+are skipped (see pending_cases). Run an entry script with --fresh to redo
+every case instead.
 """
 import os
 import re
+import sys
 import numpy as np
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -112,10 +118,38 @@ def effort_radii(
     return radii
 
 
-def random_starts(count: int, dim: int, box: float, seed: int) -> Array1D:
-    """count starting points drawn uniformly from [-box, box]^dim, rounded to 2dp."""
+def random_starts(
+    count: int, dim: int, box: float, seed: int, problem: Optional[Dict] = None
+) -> Array1D:
+    """count starting points drawn uniformly from [-box, box]^dim, rounded to 2dp.
+
+    problem: optional build_problem spec (the experiment's PROBLEM dict). When
+    given, any draw where the objective is not finite is rejected and redrawn,
+    so no run starts where the function is infinite — e.g. the nondiff Bard
+    function (nonsmooth nprob 8) is inf on the whole quadrant x[1] <= 0,
+    x[2] <= 0 because calfun clamps x to max(x, 0) there, zeroing Bard's
+    denominator. A start inside such a region gives the solver nothing to
+    rank, so the run measures escape behaviour instead of the method.
+
+    Draws come one point at a time off the same generator stream that the
+    unfiltered call consumes row by row, so accepted points match the
+    problem=None starts until the first rejection, and everything stays
+    deterministic per seed.
+    """
     rng = np.random.default_rng(seed)
-    return np.round(rng.uniform(-box, box, size=(count, dim)), 2)
+    if problem is None:
+        return np.round(rng.uniform(-box, box, size=(count, dim)), 2)
+    # .f, not .output(): probing must not count evaluations or write log lines.
+    f = build_problem(**problem).f
+    starts: List[Array1D] = []
+    # A rejected draw IS a division by zero inside the objective; the probe
+    # exists to catch those, so numpy need not also warn about them.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        while len(starts) < count:
+            x = np.round(rng.uniform(-box, box, size=dim), 2)
+            if np.isfinite(f(x)):
+                starts.append(x)
+    return np.array(starts)
 
 
 def build_cases(
@@ -448,23 +482,71 @@ def run_suite(
             print(f"[{done}/{len(cases)}] {label}: f = {f_final:.6g}  ({name})")
 
 
-def run_experiment(experiment: Experiment, max_workers: Optional[int] = MAX_WORKERS) -> Path:
+def pending_cases(experiment: Experiment, run_dir: Path) -> List[Case]:
+    """The cases whose final log does not exist in run_dir yet.
+
+    A case streams its output to a per-worker live log (New_<pid>.txt) and only
+    gains its final-named log when it ran to completion (run_case renames it as
+    its last act), so a case with a final log is always a finished one and an
+    interrupted case is always still pending. This is what makes an interrupted
+    suite resumable: relaunching runs exactly the cases that did not finish.
+    """
+    p = experiment.constants[5]
+    return [
+        case
+        for case in experiment.cases
+        if not (run_dir / f"{log_name(case[0], case[1], case[2], p, case[3], case[4])}.txt").exists()
+    ]
+
+
+def run_experiment(
+    experiment: Experiment,
+    max_workers: Optional[int] = MAX_WORKERS,
+    fresh: Optional[bool] = None,
+) -> Path:
     """Report, then run every case on the pool, writing all logs into the
     experiment's budget-keyed directory (found or created). Returns that
-    directory. Re-runs at the same budget land in the same place."""
+    directory. Re-runs at the same budget land in the same place.
+
+    Resumable: cases that already have a final log in the run directory are
+    skipped, so a suite cut short (closed terminal, sleep, crash) continues
+    from where it left off when simply relaunched. Only completed cases have
+    final logs (see pending_cases), so nothing half-written is ever kept. Pass
+    fresh=True — or run the entry script with --fresh — to redo every case;
+    by default fresh follows the command line."""
+    if fresh is None:
+        fresh = "--fresh" in sys.argv
     run_dir = run_dir_for(experiment.name, experiment.evaluations)
+
+    # Live logs left by an interrupted run's workers are partial output for
+    # cases that will be re-run; drop them so they never pollute the directory.
+    for stale in run_dir.glob("New_*.txt"):
+        stale.unlink()
 
     # Details and distribution of what is about to run: printed up front and
     # saved next to this run's logs so it can be inspected after the run too.
+    # Always the full case set — the file describes the experiment, not the
+    # portion of it this relaunch still has to run.
     summary = describe_cases(experiment.cases, experiment.evaluations)
     print(summary)
     print(f"logs -> {run_dir}")
     (run_dir / "case_distribution.txt").write_text(summary + "\n")
 
+    cases = experiment.cases if fresh else pending_cases(experiment, run_dir)
+    finished = len(experiment.cases) - len(cases)
+    if finished:
+        print(
+            f"resuming: {finished}/{len(experiment.cases)} cases already have "
+            f"logs, {len(cases)} left to run (--fresh redoes everything)"
+        )
+    if not cases:
+        print("nothing to run: every case already has a log")
+        return run_dir
+
     run_suite(
         experiment.problem,
         experiment.constants,
-        experiment.cases,
+        cases,
         experiment.evaluations,
         run_dir,
         max_workers,

@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
-from typing import Tuple
+from typing import Optional, Tuple
 
 from general_model.Trust_region_optimization import TR_function
 from general_model.Smooth.algorism6_4 import algorithm_6_4
@@ -10,7 +10,27 @@ from general_model.Smooth.Quad import fitfroquad
 Array1D = NDArray[np.floating]
 
 
-class NonSmoothFunction(TR_function):   
+class NonSmoothFunction(TR_function):
+    def _predicted_reduction(
+        self,
+        step: Array1D,
+        g: Optional[Array1D],
+        h: Optional[Array1D],
+        theta: float,
+        p: float,
+    ) -> float:
+        """Basic DFO-TRNS ratio denominator: the forcing term theta*||s||^(1+p),
+        used in place of a model reduction so that
+
+            rho = [f(x) - f(x+s)] / [theta*||s||^(1+p)].
+
+        On unsuccessful steps this makes the predicted reduction behave like
+        o(||s||), which the nonsmooth convergence analysis needs to prove the
+        Clarke generalized derivative is nonnegative along the relevant
+        directions. The model (g, h) is deliberately not used here.
+        """
+        return theta * float(np.linalg.norm(step, 2)) ** (1.0 + p)
+
     def GH(self, x: Array1D, radius: float, gh_type: int ) -> Tuple[Array1D, Array1D]:
         """gh_type 0 = quadratic interpolation fit (sets self.poised/self.f_poised);
         gh_type 1 = random +-1 model (no interpolation set, method 0 only)."""
